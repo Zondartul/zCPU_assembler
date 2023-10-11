@@ -1,0 +1,108 @@
+/// L-strings
+/// strings that store their length in the first byte
+/// any modification creates a new string
+/// ...
+/// This silly library uses N^2 memory just for a printf.
+
+/// L-buffs - have length, followed by content.
+float Lbuff_new(float n){
+    float lbuff = BumpAlloc(n+1);
+    lbuff[0] = n;
+    return lbuff;
+}
+/// L-strings - have length, followed by content
+float Lstr_new(float n){return Lbuff_new(n);}
+float Lstr_new_s(float S){
+    float l = strlen(S);
+    float lstr = Lstr_new(l);
+    strcpy(lstr+1, S);
+    return lstr;
+}
+/// reduce length to string length if 0-terminated
+/// modifies string in-place
+float Lstr_trim(float self){
+    float l = self[0];
+    float S = self+1;
+    float I = 0;
+    for(I = 0; I < l; I++){
+        if(S[I] == 0){
+            self[0] = I;
+            break;
+        }
+    }
+    return I;
+}
+
+float Lstr_append_ls(float self, float ls2){
+    float l = self[0];
+    float l2 = ls2[0];
+    float l3 = l+l2;
+    float ls3 = Lstr_new(l3);
+    memcpy(ls3+1, self+1, l);
+    memcpy(ls3+1+l, ls2+1, l2);
+    return ls3;
+}
+
+float Lstr_append_d(float self, float d){
+    float ls_dig = Lstr_new(10);
+    itoa(ls_dig+1, d);
+    Lstr_trim(ls_dig);
+    float ls3 = Lstr_append_ls(self, ls_dig);
+    return ls3;
+}
+
+float Lstr_append_c(float self, float c){
+    float l = self[0];
+    float ls2 = Lstr_new(l+1);
+    //strcpy(ls2+1, self+1);
+    memcpy(ls2+1, self+1, l);
+    ls2[l+1] = c;
+    return ls2;
+}
+
+/// variadic
+float Lstr_fmt(float s_format){
+    //PrintS("s_format = ["); PrintS(s_format); PrintS("]"); Newline();
+    float ls1 = Lstr_new(0);
+    
+    float args = &s_format;
+    float argI = 1;
+    float I = 0;
+    while(s_format[I] != 0){
+        float C = s_format[I];
+        if(C == '%'){
+            I++;
+            float C2 = s_format[I];
+            I++;
+            float arg = 0;
+            if(C2 == 's'){
+                arg = args[argI++];
+                //PrintS("arg s = ["); PrintS(arg); PrintS("]"); Newline(); 
+                float ls2 = Lstr_new_s(arg);
+                ls1 = Lstr_append_ls(ls1, ls2);      
+            }else if(C2 == 'd'){
+                arg = args[argI++];
+                //PrintS("arg d"); Newline();
+                ls1 = Lstr_append_d(ls1, arg);
+            }
+        }else{
+            ls1 = Lstr_append_c(ls1, C);
+            I++;
+        }
+    }
+    return ls1;
+}
+
+
+float PrintLS(float ls1){
+    float l = ls1[0];
+    float I = 0;
+    for(I = 0; I < l; I++){
+        float C = ls1[I+1];
+        if(C == '\n'){Newline();}
+        else{
+            PrintC(C);
+        }
+    }
+}
+

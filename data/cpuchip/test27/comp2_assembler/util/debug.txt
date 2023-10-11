@@ -1,0 +1,404 @@
+/// all the debug functions go here.
+
+// ---------- debug: test for memory leaks ---------
+
+float asm_memleak = 0;
+
+float asm_memleak_mark(){
+    asm_memleak = sm_used_allocs;
+}
+
+float asm_memleak_check(){
+    if(sm_used_allocs != asm_memleak){
+        printf("Error: Assembler memory leak: allocs prev %d, now %d\n", asm_memleak, sm_used_allocs);        
+        printf("HALT(asm_memleak_check)\n");
+        while(1){}
+    }
+}
+
+// -------------------------------------------------
+
+// ---------- gated logging functions --------------
+
+/// Todo: want exceptions so I can jump out if something goes wrong
+/// also maybe auto-cleanup variables
+/// --- asm parser debug (prints raw string) ---
+float asmp_debug = 0;
+
+float asmp_dbg(float str){
+    if(asmp_debug){printf("%s", str);}
+}
+
+/// --- asm emitter debug (prints formatted string, variadic) ---
+float asme_debug = 0;
+
+float asme_dbg(float fmt){
+    if(asme_debug){printf_v(&fmt);}
+}
+
+// -------------------------------------------------
+
+// ---------- tracing function -------------------
+float traceI = 0;
+float cur_func = 0;
+#define TRACE_STACK_SIZE 200
+trace_stack:
+alloc TRACE_STACK_SIZE;
+
+float trace_init(){
+    traceI = 0;
+    cur_func = 0;
+}
+
+float printIndent(float I){
+    while(I--){putch(' ');}
+}
+
+float trace_enter(float fname){
+    cur_func = fname;
+    trace_stack[traceI] = cur_func;
+    traceI++; 
+    if(traceI >= TRACE_STACK_SIZE){
+        Error("trace_enter(%s): ran out of trace_stack, in too deep\n", cur_func);
+    }
+    //printIndent(traceI); printf("[%d:enter %s]\n", traceI, fname);
+}
+float trace_exit(float fname){
+    if(traceI){
+        traceI--;
+        float prev_name = trace_stack[traceI];
+        if(fname){
+            if(fname != prev_name){
+                Error("trace_exit(%s) but cur_func is %s\n", fname, prev_name);
+            }
+        }
+        trace_stack[traceI] = 0;
+        if(traceI){
+            cur_func = trace_stack[traceI-1];   
+        }else{
+            cur_func = 0;
+        }
+    }else{
+        Error("traceI is already 0, too many func_exits\n");
+    }
+}
+
+float trace_loop(float *I){
+    *I++; 
+    if(*I > 100){
+        printf("Error: inf loop");
+        if(cur_func != 0){printf("in func [%s]", cur_func);}
+    }
+}
+float trace_end_loop(float *I){*I = 0;}
+
+float trace(float str){
+    printf("[%s:%s]\n", cur_func, str);
+}
+
+float print_trace(){
+    float I;
+    for(I = 0; I < traceI; I++){
+        float fname = trace_stack[I];
+        printIndent(I); printf("%d:%s\n", I, fname);
+    }
+}
+
+/// ------ error reporting ---------------
+float Error(float fmt){
+    printf_v(&fmt);
+    HaltError("Error()");
+}
+
+// variadic error that also prints a stack trace
+float ErrorTrace(float fmt){
+    printf("Error at:\n");
+    print_trace();
+    printf_v(&fmt);
+    HaltError("Error()");
+}
+
+float ErrorHalt(float func){HaltError(func);}
+
+float HaltError(float func){
+    printf("HALT(%s:%s)\n", cur_func, func);
+    while(1){}
+}
+// ------------------------------------------------
+
+// -------- various tests -----------------
+
+float disk_access_test(float disk, float stream, float offs, float n){
+    printf("disk access test\n");
+    float adr = 0;
+    float val = 0;
+    float I = 0;
+    for(I = 0; I < n; I++){
+        adr = offs+I;
+        val = disk[adr];
+        printf("%d: %d\n", adr, val);
+    }
+    printf("through stream...\n");
+    float testbuff = stack_alloc(n);
+    fseek(stream, offs);
+    fread(stream, testbuff, n);
+    for(I = 0; I < n; I++){
+        adr = offs+I;
+        val = testbuff[I];
+        printf("%d: %d\n", adr, val);
+    }
+    printf("end test\n");
+}
+
+/// check if atoi / itoa work correctly
+/// 30 Sep 2023 - this passes
+float test1(){
+    printf("atoi/itoa test... ");
+    test1_helper(1);
+    test1_helper(-1);
+    test1_helper(123);
+    test1_helper(0);
+    test1_helper(1001);
+    test1_helper(-123);
+    test1_helper(12.34);
+    test1_helper(-12.34);
+    printf("OK\n");
+}
+
+float test1_helper(float n){                
+    float lstr1 = Lstr_new(0);              
+    lstr1 = Lstr_append_d(lstr1, n);       
+    float str1 = Lbuff_array(lstr1);       
+    
+    float lstr2 = Lstr_new(0);              
+    lstr2 = Lstr_append_d(lstr2, n);        
+    float str2 = Lbuff_array(lstr2);        
+    
+    float n2 = Lstr_atoi(lstr2);           
+    if(n != n2){
+        printf("test failed\n");
+        printf("num %d -> lstr [%s]\n", n, str1); 
+        printf("lstr [%s] -> num %d\n", str2, n2); 
+        printf("HALT(test1_helper)\n");
+        while(1){}
+    }
+    free(lstr1);    
+    free(lstr2);  
+}
+
+//------ test2 - map type -----------------
+
+float test2(){                              trace_enter("test2");
+    printf("--- test2 ---\n");
+    //test2_btree(); /// this one's ok
+    test2_hashes();
+    //test2_map_ii();
+    //test2_map_si();
+    printf("--- test2 done ---\n");         trace_exit("test2");
+}
+
+str_test_hash_strings:
+db 1, 2, 3;
+str_hash1: db "call", db 0;
+db 3, 4, 5;
+str_hash2: db "call", db 0;
+db 6, 7, 8;
+str_hash3: db "call", db 0;
+db 6, 7, 8;
+str_hash4: db "call", db 0;
+db 6, 7, 8;
+str_hash5: db "call", db 0;
+db 6, 7, 8;
+
+float test2_hashes(){                       trace_enter("test2_hashes");
+    test2_hash("hello world!");
+    test2_hash("hello");
+    test2_hash("eax");
+    test2_hash("mov");                      
+    test2_hash(str_hash1);                  
+    test2_hash(str_hash1);
+    test2_hash(str_hash2);
+    test2_hash(str_hash3);
+    test2_hash(str_hash4);
+    test2_hash(str_hash5);
+                                            trace_exit("test2_hashes");
+}
+
+float test2_btree(){                        trace_enter("test2_btree");
+    float btree = new_btree();
+    btree_insert(btree, 456, 4);
+    btree_insert(btree, 123, 2);
+    btree_insert(btree, 12, 3);
+    btree_insert(btree, 5, 5);
+    btree_insert(btree, 4, 6);
+    printf("btree before:\n");
+    float depth = btree_depth(btree);
+    printf("depth %d\n", depth);
+    btree_print(btree);
+    btree_print_linarray(btree);
+    printf("btree after:\n");
+    btree_rebalance(btree);
+    depth = btree_depth(btree);
+    printf("depth %d\n", depth);
+    btree_print(btree);
+    btree_print_linarray(btree);            trace_exit("test2_btree");
+}
+
+float test2_hash(float str){                trace_enter("test2_hash");
+    float hash = hash_s(str);
+    printf("hash(%s) = %d\n", str, hash);   trace_exit("test2_hash");
+}
+
+float test2_map_ii(){                       trace_enter("test2_map_ii");
+    printf("-test2_map_ii-\n");
+    float map = new_map_ii();
+    test2_map_ii_set(map, 456, 4);
+    test2_map_ii_set(map, 123, 2);
+    test2_map_ii_set(map, 12, 3);
+    test2_map_ii_set(map, 5, 5);
+    test2_map_ii_set(map, 4, 6);
+    printf("map before:\n");
+    map_ii_print(map);
+    printf("map after:\n");
+    map_ii_rebalance(map);
+    map_ii_print(map);
+    test2_map_ii_helper(map, 12, 3);
+    test2_map_ii_helper(map, 456, 4);
+    test2_map_ii_helper(map, 4, 6);
+    test2_map_ii_helper(map, 123, 2);
+    test2_map_ii_helper(map, 5, 5);
+    map_ii_delete(map);
+    printf("-test2_map_ii done-\n");        trace_exit("test2_map_ii");
+}
+
+float test2_map_ii_set(float map, float key, float val){    trace_enter("test2_map_ii_set");
+    float p_val = map_ii_at(map, key);
+    if(p_val == 0){ErrorHalt("p_val is 0");}
+    *p_val = val;                                           trace_exit("test2_map_ii_set");
+}
+
+float test2_map_ii_helper(float map, float key, float exp){   trace_enter("test2_map_ii_helper");
+    float p_val = map_ii_at(map, key);
+    if(p_val == 0){ErrorHalt("p_val is 0");}
+    float val = *p_val;
+    if(val == exp){
+        printf("map[%d] = %d (ok)\n", key, val);
+    }else{
+        printf("map[%d] = %d BUT %d expected\n", key, val, exp);
+    }                                                         trace_exit("test2_map_ii_helper");
+}
+
+float test2_map_si(){                       trace_enter("test2_map_si");
+    printf("-test2_map_si-\n");
+    float map = new_map_si();
+    test2_map_si_set(map, "eax", 123);
+    test2_map_si_set(map, "ebx", 456);
+    test2_map_si_set(map, "mov", 42);
+    test2_map_si_set(map, "rstack", 69);
+    printf("map before:\n");
+    map_si_print(map);
+    printf("map after:\n");
+    map_si_rebalance(map);
+    map_si_print(map);
+    test2_map_si_helper(map, "mov", 42);
+    test2_map_si_helper(map, "eax", 123);
+    test2_map_si_helper(map, "rstack", 69);
+    test2_map_si_helper(map, "ebx", 456);
+    map_si_delete(map);
+    printf("-test2_map_si done-\n");        trace_exit("test2_map_si");
+}
+
+float test2_map_si_set(float map, float key, float val){    trace_enter("test2_map_si_set");
+    float p_val = map_si_at(map, key);
+    if(p_val == 0){ErrorHalt("p_val is 0\n");}
+    *p_val = val;                                           trace_exit("test2_map_si_set");
+}
+
+float test2_map_si_helper(float map, float key, float exp){   trace_enter("test2_map_si_helper");
+    float p_val = map_si_at(map, key);
+    if(p_val == 0){ErrorHalt("p_val is 0\n");}
+    float val = *p_val;
+    if(val == exp){
+        printf("map[%s] = %d (ok)\n", key, val);
+    }else{
+        printf("map[%s] = %d BUT %d expected\n", key, val, exp);
+    }                                                          trace_exit("test2_map_si_helper");
+}
+
+//-----------------------------------------
+
+// -------- profiling utilities -----------
+
+float prof_time(){
+    TIMER eax;
+    return eax;
+}
+
+prof_array_t1:
+alloc 10;
+
+prof_array_t2:
+alloc 10;
+
+prof_array_dt_sum:
+alloc 10;
+
+#define PROF_FUNC_ALL 0
+#define PROF_FUNC_TOKENIZER 1
+#define PROF_FUNC_PARSER 2
+#define PROF_FUNC_EMITTER 3
+#define PROF_FUNC_VERIFY 4
+
+
+float prof_mark_t1(float idx){
+    prof_array_t1[idx] = prof_time();
+}
+
+float prof_mark_t2(float idx){
+    float t2 = prof_time();
+    prof_array_t2[idx] = t2;
+    float t1 = prof_array_t1[idx];
+    float t21 = t2-t1;
+    float t_sum = prof_array_dt_sum[idx];
+    t_sum += t21;
+    prof_array_dt_sum[idx] = t_sum;
+}
+
+float prof_report_idx(float idx){
+    float t1 = prof_array_t1[idx];
+    float t2 = prof_array_t2[idx];
+    float t_sum = prof_array_dt_sum[idx];
+    printf("t1 %d, t2 %d, sum %d\n", t1, t2, t_sum);
+}
+
+float prof_total_sum(){
+    float total_sum = 0;
+    float I;
+    for(I = 0; I < 10; I++){
+        total_sum += prof_array_dt_sum[I];
+    }
+    return total_sum;
+}
+
+float prof_report_line(float idx, float name){
+    float total_sum = prof_total_sum();
+    float t = prof_array_dt_sum[idx];
+    float perc = t * 100 / total_sum;
+    fint perc;
+    printf("%s: %d%%\n", name, perc);
+}
+
+float prof_reset(){
+    float I;
+    for(I = 0; I < 10; I++){
+        prof_array_t1[I] = 0;
+        prof_array_t2[I] = 0;
+        prof_array_dt_sum = 0;
+    }
+}
+
+
+
+
+
+

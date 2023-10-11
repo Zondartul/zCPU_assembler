@@ -1,0 +1,218 @@
+#ifndef MAP_GUARD
+#define MAP_GUARD
+#include "memory/btree.txt"
+/// map.txt
+/// provides ordered, hashed string access
+
+/// ------- string hashing --------------
+/// can't use FNV-1 because smallest FNV is 32 bit and we can't do mod-32 arithmetic on 48-bit registers
+/// unless we split it up into 16 and 16, as multiplication doubles the bitness of intermediate result
+
+/// we can instead use Pearson 8-bit hash with permutation table.
+
+permutation_table:
+db 105, 92, 211, 127, 224, 76, 177, 217, 163, 130, 67, 114, 254, 203, 38, 181, 51, 10, 30, 90, 222, 218, 209, 58, 46, 180, 31, 70, 198, 231, 215, 233, 167, 199, 66, 172, 164, 57, 166, 123, 71, 232, 113, 89, 154, 125, 238, 223, 139, 42, 236, 35, 26, 98, 201, 235, 134, 86, 121, 25, 84, 11, 128, 1, 62, 247, 208, 118, 43, 250, 190, 7, 202, 157, 100, 109, 227, 96, 173, 106, 23, 252, 205, 249, 196, 37, 140, 179, 99, 168, 176, 12, 225, 47, 216, 94, 239, 103, 248, 22, 161, 136, 28, 193, 45, 214, 220, 159, 18, 82, 184, 77, 229, 137, 219, 200, 155, 60, 83, 95, 50, 53, 17, 174, 29, 111, 230, 243, 101, 39, 133, 33, 255, 144, 162, 63, 129, 183, 52, 186, 152, 115, 104, 240, 237, 226, 48, 3, 72, 13, 59, 210, 187, 188, 175, 228, 192, 207, 135, 251, 61, 245, 20, 32, 107, 169, 79, 182, 6, 212, 242, 21, 69, 132, 120, 142, 197, 122, 0, 156, 85, 131, 151, 253, 64, 165, 204, 141, 191, 145, 138, 195, 126, 97, 148, 34, 78, 81, 119, 150, 110, 124, 87, 27, 143, 88, 158, 117, 189, 170, 36, 244, 108, 171, 4, 112, 102, 73, 246, 2, 9, 160, 153, 116, 15, 68, 24, 41, 16, 14, 54, 241, 80, 74, 8, 146, 178, 55, 56, 194, 93, 49, 149, 221, 91, 75, 234, 44, 213, 65, 147, 40, 19, 185, 206, 5
+permutation_table_end: db 0
+
+/// FNV-like 32-bit hash (because we have to modulo manually)
+float hash_s(float str){return FNV32(str);}
+
+float Pearson_hash_s(float str){return Pearson_hash_s_8b(str);}
+
+
+
+float Pearson_hash_s_8b(float str){    trace_enter("Pearson_hash_s");
+    float hash = 0;
+    while(*str){
+        float C = *str++;
+        C = C % 256;
+        //hash = hash * FNV_PRIME;
+        //hash = hash % FNV_E24;
+        //hash = hash ^ C;
+        float hC = hash ^ C;
+        hash = permutation_table[hC];
+    }                               trace_exit("Pearson_hash_s"); 
+    return hash
+}
+
+#define FNV1_32_PRIME 16777619
+#define FNV1_32_OFFSET 2166136261
+
+#define N8 256
+#define N16 65536
+
+float mul_mod32(float A, float B){
+    
+    float A16L = A % N16;
+    float A16H = floor(A/N16);
+    float B16L = B % N16;
+    float B16H = floor(B/N16);
+    
+    float C32_ALBL = A16L * B16L;
+    float C32_ALBH = A16L * B16H;
+    float C32_AHBL = A16H * B16L;
+    //float C32_AHBH = A16H * B16H;
+    
+    /// E = (A + 256*B) * (C + 256*D) = AC + 256*AD + 256*BC + 65536*BD
+    //  E % 65536 = AC + 256*(AD%256) + 256*(BC%256)    
+    float C32 = C32_ALBL + N16* ((C32_ALBH + C32_AHBL) % N16);
+    return C32;   
+}
+
+float add_mod32(float A, float B){
+    return (A+B) % N16;
+}
+
+float get_octet(float p_str, float p_res){
+    float str = *p_str;
+    float oct = 0;
+    float End = 0;
+    float I;
+    for(I = 0; I < 4; I++){
+        float C = str[I];
+        if(C == 0){End = 1;}
+        if(End == 1){C = 0;} //pad the rest with zeroes so we don't read trash
+        oct = oct*256 + C;
+    }
+    *p_res = oct;
+    //printf("  get_octet(%s) = %d\n", str, oct);
+    *p_str = str+4;
+    return End;
+}
+
+float FNV32(float str){
+    ///hash = offset_basis
+    ///for each octet_of_data to be hashed
+    /// hash = hash * FNV_prime
+    /// hash = hash xor octet_of_data
+    ///return hash
+    //printf("FNV32_begin(%s)\n", str);
+    float hash = FNV1_32_OFFSET;
+    
+    float oct = 0;
+    float p_oct = &oct;
+    float p_str = &str;
+    
+    float End = 0;
+    while(End == 0){
+        oct = 0;
+        End = get_octet(p_str, p_oct);
+        //printf("oct = %d\n", oct);
+        hash = mul_mod32(hash, FNV1_32_PRIME);
+        hash = hash ^ oct;
+    }
+    //printf("FNV32_done\n");
+    return hash;
+}
+
+
+/// -------------------------------------
+
+/// map<int, int>
+float new_map_ii(){                 trace_enter("new_map_ii");
+    float res = new_btree();        trace_exit("new_map_ii");
+    return res;
+}
+
+float map_ii_at(float self, float k){       trace_enter("map_ii_at");
+    float node = btree_get_node(self, k);
+    if(!node){
+        btree_insert(self, k, 0);
+    }
+    node = btree_get_node(self, k);         trace_exit("map_ii_at");
+    return node+BTREE_VAL;
+}
+
+float map_ii_at_or_null(float self, float k){ trace_enter("map_ii_at_or_null");
+    float node = btree_get_node(self, k);
+    float res = 0;
+    if(node){res = node + BTREE_VAL;}         trace_exit("map_ii_at_or_null");
+    return res;
+}
+
+float map_ii_print(float self){
+    float count = btree_size(self);
+    float array = stack_alloc(count*2);
+    btree_to_linarray(self, array);
+    float I;
+    for(I = 0; I < count; I++){
+        float key = array[2*I];
+        float val = array[2*I+1];
+        printf("%d:%d\n", key, val);
+    }
+}
+
+float map_ii_rebalance(float self){ btree_rebalance(self); }
+
+float map_ii_delete(float self){btree_delete(self);}
+
+float map_ii_insert(float self, float k, float v){  trace_enter("map_ii_insert");
+    float node = btree_get_node(self, k);
+    if(node){
+        ErrorTrace("insert(%d, %d): node already exists", k, v);
+    }else{
+        btree_insert(self, k, v);
+    }                                               trace_exit("map_ii_insert");
+}
+/// -------------------------------------
+
+/// map<string, integer>
+
+
+float new_map_si(){            trace_enter("new_map_si");
+    float res = new_btree();   trace_exit("new_map_si");
+    return res;
+}
+
+/// returns a pointer to the value element
+/// of a given key (where k is a string)
+float map_si_at(float self, float k_str){   trace_enter("map_si_at");
+    float k = hash_s(k_str);
+    float res = map_ii_at(self, k);         
+    //printf("map_si_at(%s) = %d (%d)\n", k_str, res, *res);
+    trace_exit("map_si_at");
+    return res;
+}
+
+float map_si_at_or_null(float self, float k_str){ trace_enter("map_si_at_or_null");
+    float k = hash_s(k_str);
+    float res = map_ii_at_or_null(self, k);       
+    //printf("map_si_at_or_null(%s)/%d = %d (%d)\n", k_str, k, res, *res);
+                                                  trace_exit("map_si_at_or_null");
+    return res;
+}
+
+float map_si_print(float self){
+    return map_ii_print(self); /// cause we're not storing the string keys yet
+}
+
+float map_si_rebalance(float self){ btree_rebalance(self); }
+
+float map_si_delete(float self){btree_delete(self);}
+
+float map_si_insert(float self, float k_str, float val){    trace_enter("map_si_insert");
+    float k = hash_s(k_str);
+    map_ii_insert(self, k, val);                            trace_exit("map_si_insert");
+    
+    /// now make sure it's there
+    float cell = map_si_at_or_null(self, k_str);
+    if(!cell){
+        ErrorTrace("val added but not found");
+    }    
+}
+
+/// -------------------------------------
+
+
+#endif
+
+
+
+
+
+
+
+
+
+
+

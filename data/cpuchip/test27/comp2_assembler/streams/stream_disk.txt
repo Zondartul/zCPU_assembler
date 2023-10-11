@@ -1,0 +1,69 @@
+#ifndef STREAM_DISK_GUARD
+#define STREAM_DISK_GUARD
+/// stream_disc
+/// create stream by calling make_stream_disc(out buff[6], in adr_disc)
+
+/// ------- disc io ----------
+#define STREAM_DISK_ADR 6
+#define STREAM_DISK_I 7
+#define STREAM_DISK_MAXI 8
+
+float make_disk_stream(float buff, float adr_disc, float disk_size){
+    buff[STREAM_TYPEOF] = typeof_stream;
+    buff[STREAM_PUTCH] = putch_disk;
+    buff[STREAM_GETCH] = getch_disk;
+    buff[STREAM_HASCH] = hasch_disk;
+    buff[STREAM_SEEK] = seek_disk;
+    buff[STREAM_TELL] = tell_disk;
+    buff[STREAM_DISK_ADR] = adr_disc;
+    buff[STREAM_DISK_I] = 0;
+    buff[STREAM_DISK_MAXI] = disk_size;
+}
+
+float seek_disk(float n, float stream){
+    stream[STREAM_DISK_I] = n;
+    return n;
+}
+
+float tell_disk(float stream){
+    return stream[STREAM_DISK_I];
+}
+
+float putch_disk(float c, float stream){
+    float adr = stream[STREAM_DISK_ADR];
+    float diskI = stream[STREAM_DISK_I];
+    float maxI = stream[STREAM_DISK_MAXI];
+    if(diskI < maxI){
+        adr[diskI++] = c;
+        stream[STREAM_DISK_I] = diskI;
+        return c;
+    }
+    return 0;
+}
+
+float getch_disk(float stream){                 trace_enter("getch_disk");
+    float hasch = stream[STREAM_HASCH];
+    float adr   = stream[STREAM_DISK_ADR];
+    float diskI = stream[STREAM_DISK_I];
+    float maxI = stream[STREAM_DISK_MAXI];
+    float res = 0;
+    if(diskI < maxI){
+        float C = adr[diskI++];
+        stream[STREAM_DISK_I] = diskI;
+        res = C;
+    }else{
+        res = 0;
+    }
+                                                trace_exit("getch_disk");
+    return res;
+}
+
+float hasch_disk(float stream){
+    float diskI = stream[STREAM_DISK_I];
+    float maxI = stream[STREAM_DISK_MAXI];
+    return (diskI < maxI);
+}
+/// ----------------------------
+
+
+#endif

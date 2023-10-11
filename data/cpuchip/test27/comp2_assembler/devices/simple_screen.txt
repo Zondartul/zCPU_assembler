@@ -1,0 +1,54 @@
+/// simple screen printing
+
+#define SCR_WIDTH 30
+#define SCR_HEIGHT 18
+#define KEY_ENTER 10
+#define KEY_BACKSPACE 127
+
+float ScrI = 0;
+float chars_printed = 0;
+/// requires AdrScr
+
+float simple_screen_putch(float C){
+    if(C == '\n'){Newline();}
+    else if(C == KEY_BACKSPACE){Backspace();}
+    else{PrintC(C);}
+}
+
+float PrintC(float C){
+    AdrScr[2*ScrI] = C;
+    AdrScr[2*ScrI+1] = 999;
+    ScrI++;
+    chars_printed++;
+}
+
+float PrintS(float S){
+    float I = 0;   
+    while(S[I] != 0){
+        PrintC(S[I]);
+        I++;
+    }
+}
+
+float Print(float S){
+    float I = 0;
+    while(S[I] != 0){
+        float C = S[I];
+        //if(C == '\n'){Newline();}
+        //else{PrintC(C);}
+        simple_screen_putch(C);
+        I++;
+    }
+}
+
+float Backspace(){
+    ScrI--;
+    PrintC(' ');
+    ScrI--;
+}
+
+float Newline(){
+    float col = ScrI % SCR_WIDTH
+    ScrI = ScrI - col + SCR_WIDTH
+}
+

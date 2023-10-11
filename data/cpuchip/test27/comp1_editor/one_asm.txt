@@ -1,0 +1,3 @@
+#pragma set OutputBinaryListing true
+#pragma set FixedSizeOutput true
+mov EAX,4000

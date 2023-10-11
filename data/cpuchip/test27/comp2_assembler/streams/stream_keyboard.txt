@@ -1,0 +1,31 @@
+#ifndef STREAM_KEYBOARD_GUARD
+#define STREAM_KEYBOARD_GUARD
+/// stream_keyboard
+
+#include "streams/simple_stream.txt"
+#define STREAM_KB_ADR 4
+
+float make_keyboard_stream_in(float buff, float adr_kb){
+    buff[STREAM_TYPEOF] = typeof_stream;
+    // putch
+    buff[STREAM_GETCH] = getch_kb;
+    buff[STREAM_HASCH] = hasch_kb;
+    buff[STREAM_KB_ADR] = adr_kb;
+}
+
+float getch_kb(float stream){
+    float adr   = stream[STREAM_KB_ADR];
+    while(adr[0] == 0){} /// wait until we have something
+    float C = adr[1];
+    adr[0] = 1; /// tell KB we have read one char
+    return C;
+}
+
+float hasch_kb(float stream){
+    float adr   = stream[STREAM_KB_ADR];
+    float B = adr[0];
+    if(B != 0){return 1;}else{return 0;}
+}
+
+#endif
+

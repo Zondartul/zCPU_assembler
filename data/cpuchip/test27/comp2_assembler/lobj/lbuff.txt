@@ -1,0 +1,165 @@
+#ifndef LBUFF_GUARD
+#define LBUFF_GUARD
+/// LBuff - basically zvector ver.3, BUT simpler and self-moving
+/// LBuff will grow by 1.5 whenever the size exceeds capacity
+/// it will not shrink unless LBuff_trim is called
+/// growing LBuff involves it self-reallocating and returning
+/// the new pointer to self.
+
+// [Lbuff]
+// type   "Lbuff"      //magic value to id this as an object of class vector
+// int    size         //number of elements currently in array
+// int    capacity     //number of elements that the space is reserved for
+// - the data array is appended to the LBuff -
+// ------------------------
+// funcs: 
+// -- reallocating --
+// self   Lbuff_constructor(size) //create the vector
+// self   Lbuff_push(self, element)             //add an element to the end (by value if size=1, else by ref)
+// self   Lbuff_insert(self,element,pos)        //insert an element, moving the rest forward
+// self   Lbuff_reserve(self, new_cap)          //resize the vector's internal storage (formerly known as vector_resize)
+// float  Lbuff_resize(self, new_size)          //change the number of elements in a vector.
+
+// ----- non-reallocating -- 
+// --- mutating -----
+// void   Lbuff_clear(self)                     //delete all elements
+// float  Lbuff_pop(self)                       //remove and return last element
+// void   Lbuff_set(self,element,pos)           //set element at position to new value
+// void   Lbuff_remove(self,pos)                //remove an element, moving the rest back
+
+// --- information --
+// int    Lbuff_size(self)                      //size of the vector
+// float  Lbuff_get(self,pos)                   //return element at position
+// ptr    Lbuff_get_ref(self,pos)               //get a pointer to the n'th element
+// ptr    Lbuff_array(self)                     //pointer to the internal array
+
+/// ============== THIS needs to be rewritten according to above lore
+/// L-buffs - have size and capacity, followed by content.
+/// grow by a factor of 1.5
+/// tldr its a vector by another name
+typeof_lbuff: db "LBuff", 0;
+
+#define LBUFF_TYPEOF 0
+#define LBUFF_SIZE 1
+#define LBUFF_CAP 2
+#define LBUFF_ARRAY 3
+
+/// dummy while it's just this file
+//float malloc(){}
+//float realloc(){}
+//float memcpy(){}
+/// end dummy
+
+float assert_type(float self, float type){
+    if(self[0] != type){
+        ErrorTrace("Error: %d is not a %s\n", self, type);
+        while(1){}
+    }
+}
+
+float Lbuff_new(float n){               
+    float lbuff = malloc(3+n);          
+    lbuff[LBUFF_TYPEOF] = typeof_lbuff; 
+    lbuff[LBUFF_SIZE] = n;              
+    return lbuff;
+}
+
+float Lbuff_set(float self, float pos, float val){
+    assert_type(self, typeof_lbuff);
+    self[LBUFF_ARRAY+pos] = val;
+}
+
+float Lbuff_clear(float self){
+    return Lbuff_resize(self, 0);
+}
+
+float Lbuff_resize(float self, float new_size){        //trace_enter("Lbuff_resize");
+    assert_type(self, typeof_lbuff);
+    //printf("[%s:%d]\n", __FILE__, 65);
+    float cap = self[LBUFF_CAP];
+    if(new_size > cap){
+        while(new_size > cap){
+            //printf("new_size > cap? %d > %d\n", new_size, cap);
+            cap = cap*1.5+2;
+            fint cap;
+        }                                               //trace(__FILE__, 72);
+        self = realloc(self, cap);                      //trace(__FILE__, 73);
+        if(self == 0){printf("<error 74>"); while(1){};}
+        self[LBUFF_CAP] = cap;
+    }
+    self[LBUFF_SIZE] = new_size;                        //trace_exit();
+    return self;
+}
+
+float Lbuff_shrink(float self){
+    assert_type(self, typeof_lbuff);
+    float size = self[LBUFF_SIZE];
+    float cap = self[LBUFF_CAP];
+    if(size != cap){
+        cap = size;
+        self = realloc(self, cap);
+        self[LBUFF_CAP] = cap;
+    }
+    return self;
+}
+
+float Lbuff_push(float self, float val){
+    assert_type(self, typeof_lbuff);
+    float size = self[LBUFF_SIZE];
+    self = Lbuff_insert(self, size, val);
+    return self;
+}
+
+float Lbuff_size(float self){
+    assert_type(self, typeof_lbuff);
+    return self[LBUFF_SIZE];
+}
+
+float Lbuff_memcpy(float self, float pos, float src, float size){
+    assert_type(self, typeof_lbuff);
+    if((pos + size) > self[LBUFF_SIZE]){return 0;}
+    memcpy(self+LBUFF_ARRAY+pos, src, size);
+}
+
+float Lbuff_array(float self){
+    assert_type(self, typeof_lbuff);
+    return self+LBUFF_ARRAY;
+}
+
+float Lbuff_insert(float self, float pos, float val){
+    assert_type(self, typeof_lbuff);
+    //printf("[%s:%d]\n", __FILE__, 109);
+    float size = self[LBUFF_SIZE];
+    float rem_size = size-pos;
+    self = Lbuff_resize(self, size+1);
+    memcpy(self+LBUFF_ARRAY+pos+1, self+LBUFF_ARRAY+pos, rem_size);
+    self[LBUFF_ARRAY+pos] = val;
+    //printf("[%s:%d]\n", __FILE__, 115);
+    return self;
+}
+
+//------- figure out which ones are actually necesary right now
+/// Lstr constructor: n is the size to reserve
+
+/// lstr
+//    Lstr_new(10);
+//    Lstr_length(self);
+//    Lstr_resize(self, l+l2);
+//    Lstr_append_s(self, s2);
+//    Lstr_append_ls(self, ls_dig);
+//    Lstr_append_d(self, arg);
+//    Lstr_append_c(self, C);
+    
+
+/// lbuff
+//    Lbuff_new(n+1);
+//    Lbuff_set(self, '\0', 0);
+            /// self, pos, src, size
+//    Lbuff_memcpy(lstr, 0, S, l);
+//    LBuff_size(self)
+//    LBuff_resize(self, new_size+1);
+//    LBuff_array(self);
+//    LBuff_insert(self, l-1, c); /// before the term. 0
+    
+#endif
+

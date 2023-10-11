@@ -1,0 +1,175 @@
+// tokenizer:
+// produces tokens: alpha, num, space, punct, string
+
+/// Lb_tokens:
+/// 0 - token type (one of: str_tok_alpha, str_tok_num, str_tok_space, str_tok_puct, str_tok_string)
+/// 1 - token lstring
+
+float isalpha(float C){return ((C >= 'a') && (C <= 'z')) || ((C >= 'A') && (C <= 'Z'));}
+float isnum(float C){return (C >= '0') && (C <= '9');}
+float asm_isalpha_begin(float C){
+    float b = ((C == '_') || (isalpha(C)==1));
+    return b;
+}
+float asm_isalpha_cont(float C){
+    float b1 = asm_isalpha_begin(C);
+    float b2 = isnum(C);
+    float b3 = b1 || b2; /// this works, but comparing them directly does not. maybe it doesn't like
+                        /// multiple functions in one expression.
+
+    return b3;
+}
+float asm_isnum_begin(float C){return (C == '-') || (isnum(C)==1);}
+float asm_isnum_cont(float C){return (C == '.') || (isnum(C)==1);}
+float asm_isspace(float C){return (C == ' ') || (C == '\n') || (C == '\t');}
+float asm_ispunct(float C){return (C == ':') || (C == ',') ||(C == '#');}
+float asm_isdquote(float C){return (C == '\"');}
+
+str_tok_alpha: db "tok_alpha", 0;
+str_tok_num: db "tok_num", 0;
+str_tok_space: db "tok_space", 0;
+str_tok_punct: db "tok_punct", 0;
+str_tok_string: db "tok_string", 0;
+
+float unescape_char(float C){
+    float res = 0;
+    if(C == 'n'){res = '\n';}
+    if(C == 'r'){res = '\r';}
+    if(C == 't'){res = '\t';}
+    if(C == '0'){res = '\0';}
+    if(C == '\"'){res = '\"';}
+    if(C == '\''){res = '\'';}
+    if(C == '\\'){res = '\\';}
+    return res;
+}
+
+float asm_print_toks(float lbuff){
+    float size = Lbuff_size(lb_tokens);
+    //printf("asm_tokenize: got %d/2 = %d tokens\n", size, size/2);
+    float I = 0;
+    float arr = Lbuff_array(lb_tokens);
+    
+    while(I < size){
+        float tok_typestr = arr[I++];
+        float lstr_tok = arr[I++];
+        float str2 = Lbuff_array(lstr_tok);
+        printf("%s:[%s]\n", tok_typestr, str2);
+    }
+}
+
+
+float asm_tokenize(float str){
+                                            trace_enter("asm_tokenize");
+    // tokens:
+    // alphanum, num, space, punct.
+    //printf("asm_tokenize v1.6\n");
+
+    float I = 0;
+    while(str[I] != 0){
+        float C = str[I];
+             if(asm_isalpha_begin(C)){I += asm_tok_alpha(str+I);}
+        else if(asm_isnum_begin(C))  {I += asm_tok_num  (str+I);}
+        else if(asm_isspace(C))      {I += asm_tok_space(str+I);}
+        else if(asm_ispunct(C))      {I += asm_tok_punct(str+I);}
+        else if(asm_isdquote(C))     {I += asm_tok_string(str+I);}
+        else{
+            HaltError("1");
+            //printf("asm_tokenize: error 1\n");
+            //printf("HALT(asm_tokenize)\n");
+            //while(1){}
+        }
+    }
+                                            trace_exit("asm_tokenize");
+    return 1;
+}
+
+float save_token(float type, float buff){       trace_enter("save_token");
+    lb_tokens = Lbuff_push(lb_tokens, type);
+    float lstr = Lstr_new_s(buff);
+    lb_tokens = Lbuff_push(lb_tokens, lstr);    trace_exit("save_token");
+}
+
+float asm_tok_alpha(float str){
+    float buff = stack_alloc(50);
+    float I = 0;
+    buff[I] = str[I];
+    I++;
+    while(asm_isalpha_cont(str[I])){
+        buff[I] = str[I]; 
+        I++;
+    }
+    buff[I] = 0;
+    //printf("tok_alpha [%s]\n", buff);
+    save_token(str_tok_alpha, buff);
+    return I;
+}
+
+float asm_tok_num(float str){
+    //printf("tok_num1: str [%s]\n", str);
+    float buff = stack_alloc(50);
+    float I = 0;
+    buff[I] = str[I];
+    I++;
+    while(asm_isnum_cont(str[I])){
+        buff[I] = str[I];
+        I++;
+    }
+    buff[I] = 0;
+    //printf("tok_num2 str[%s]\n", buff);
+    save_token(str_tok_num, buff);
+    return I;
+}
+
+float asm_tok_space(float str){
+    float buff = stack_alloc(50);
+    float I = 0;
+    while(asm_isspace(str[I])){
+        buff[I] = str[I]; 
+        I++;
+    }
+    buff[I] = 0;
+    //printf("tok_space [%s]\n", buff);
+    save_token(str_tok_space, buff);
+    return I;
+}
+
+float asm_tok_punct(float str){
+    float buff = stack_alloc(2);
+    float I = 0;
+    buff[I] = str[I];
+    I++;
+    buff[I] = 0;
+    /// punctuation tokens should be single-char
+    //printf("tok_punct [%s]\n", buff);
+    save_token(str_tok_punct, buff);
+    return I;
+}
+
+float asm_tok_string(float str){    trace_enter("asm_tok_string");
+    
+    float lstr = Lstr_new(0);
+    float strI = 1;
+    while(1){
+        float C = str[strI++];
+        if(C == '\"'){
+            break;
+        }else if(C == '\\'){
+            float C2 = str[strI++];
+            float C3 = unescape_char(C2);
+            lstr = Lstr_append_c(lstr, C3);
+        }else if(C == 0){
+            break;
+        }else{
+            lstr = Lstr_append_c(lstr, C);
+        }
+    }
+    
+    //printf("tok_string [%s]\n", buff);
+    float buff = Lbuff_array(lstr);
+    save_token(str_tok_string, buff);
+    free(lstr);
+                                    trace_exit("asm_tok_string");
+    return strI;
+}
+
+

@@ -1,0 +1,147 @@
+#ifndef LSTRING2_GUARD
+#define LSTRING2_GUARD
+/// L-string 2, this time using malloc and realloc to grow the string
+/// all strings live on heap and grow
+/// TODO: redo this file
+
+/// -------- old stuff below ------
+/// L-strings
+/// strings that store their length in the first byte
+/// any modification creates a new string
+/// ...
+/// This silly library uses N^2 memory just for a printf.
+
+/// ---- definition of Lbuff was here but then I yoinked it
+
+/// L-strings - store length (implemented by Lbuff), followed by content
+
+/// Lstr: is just an LBuff
+
+#include "lobj/lbuff.txt"
+/// Lstr constructor: n is the size to reserve
+float Lstr_new(float n){               
+    float self = Lbuff_new(n+1);        
+    Lbuff_set(self, 0, '\0');          
+                                      
+    return self; 
+}
+
+float Lstr_new_s(float S){              //trace_enter("Lstr_new_s");
+    float l = strlen(S);
+    float lstr = Lstr_new(l);
+            /// self, pos, src, size
+    Lbuff_memcpy(lstr, 0, S, l+1);
+                                        //trace_exit();
+    return lstr;
+}
+
+float Lstr_length(float self){          //trace_enter("Lstr_length");
+                                        //trace_exit();
+    return LBuff_size(self) - 1; /// disregard the terminating 0
+}
+
+float Lstr_resize(float self, float new_size){  //trace_enter("Lstr_resize");
+                                                //trace_exit();
+    return LBuff_resize(self, new_size+1); /// add terminating 0
+}
+
+float Lstr_append_s(float self, float s){       //trace_enter("Lstr_append_s");
+    float l = Lstr_length(self);
+    float l2 = strlen(s);
+    self = Lstr_resize(self, l+l2);
+    LBuff_memcpy(self, l, s, l2+1); /// incl. terminating 0
+                                               // trace_exit();
+    return self;    
+}
+
+float Lstr_append_ls(float self, float ls2){    //trace_enter("Lstr_append_ls");
+    float s2 = LBuff_array(ls2);
+                                                //trace_exit();
+    return Lstr_append_s(self, s2);
+}
+
+float Lstr_append_d(float self, float d){      
+                                 /// 123 456 7890123 456 789 0 
+    float ls_dig = Lstr_new(20); /// -12'345'678.123'456'789 \0               
+    float ls_dig_s = LBuff_array(ls_dig);       
+    itoa(ls_dig_s, d);                          
+    self = Lstr_append_ls(self, ls_dig);        
+    free(ls_dig);                               
+                                               
+    return self;
+}
+
+float Lstr_append_c(float self, float c){       //trace_enter("Lstr_append_c");
+    float l = Lstr_length(self);                //trace(__FILE__, 75);
+    self = LBuff_insert(self, l, c);          //trace(__FILE__, 76);/// before the term. 0
+                                                //trace_exit();
+    return self;
+}
+
+float Lstr_atoi(float self){
+    float str = Lbuff_array(self);
+    return atoi(str);
+}
+
+/// variadic
+float Lstr_fmt(float s_format){                 //trace_enter("Lstr_fmt");
+    float self = Lstr_new(0);                   //trace(__FILE__, 83);
+                                                //trace(__FILE__, 84);
+    float args = &s_format;                     //trace(__FILE__, 85);
+    float argI = 1;                             //trace(__FILE__, 86);
+    float I = 0;                                //float traceI = 0;
+    while(s_format[I] != 0){                    //trace_loop(&traceI);
+        float C = s_format[I];                  //trace(__FILE__, 89);
+        if(C == '%'){                           //trace(__FILE__, 90);
+            I++;                                //trace(__FILE__, 91);
+            float C2 = s_format[I];             //trace(__FILE__, 92);
+            I++;                                //trace(__FILE__, 93);
+            float arg = 0;                      //trace(__FILE__, 94);
+            if(C2 == 's'){                      //trace(__FILE__, 95);
+                arg = args[argI++];             //trace(__FILE__, 96);
+                self = Lstr_append_s(self, arg);//trace(__FILE__, 97);
+            }else if(C2 == 'd'){                //trace(__FILE__, 98);
+                arg = args[argI++];             //trace(__FILE__, 99);
+                self = Lstr_append_d(self, arg);//trace(__FILE__, 100);
+            }                                   //trace(__FILE__, 101);
+        }else{                                  //trace(__FILE__, 102);
+            self = Lstr_append_c(self, C);      //trace(__FILE__, 103);
+            I++;                                //trace(__FILE__, 104);
+        }                                       //trace(__FILE__, 105);
+    }                                           //trace_end_loop(&traceI);
+                                                //trace_exit();
+    return self;
+}
+
+#define STREAM_LSTR 4
+
+float putch_lstr(float c, float stream){
+    float lstr = STREAM[STREAM_LSTR];
+    lstr = Lstr_append_c(lstr, c); /// this is a problem, we can't return self from putchar
+    STREAM[STREAM_LSTR] = lstr;
+    return lstr;
+}
+
+
+
+float make_lstring_stream_out(float buff, float lstr){
+    buff[STREAM_TYPEOF] = typeof_stream;
+    buff[STREAM_PUTCH] = putch_lstr;
+    buff[STREAM_LSTR] = lstr;
+}
+
+float printf_lstr(float lstr, float format){
+    float prev_cout = cur_stream_out;
+    float stream = stack_alloc(10);
+    make_lstring_stream_out(stream, lstr);
+    cur_stream_out = stream;
+    printf_v(&format);
+    cur_stream_out = prev_cout;
+}
+
+float PrintLS(float ls1){
+    float s = LBuff_array(ls1);
+    printf("%s", s);
+}
+
+#endif

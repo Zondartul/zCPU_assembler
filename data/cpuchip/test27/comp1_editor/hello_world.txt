@@ -1,0 +1,244 @@
+#pragma set OutputFinalListing true
+#pragma set OutputToFile true
+//#pragma set FixedSizeOutput true
+jmp main();
+
+/// before converting: verify that it works on a normal computer
+/// to convert final listing in Notepad++ using regex:
+/// 1. replace commands with db of stringified commands
+///     find:       ^[ ]+([0-9]+)[ ](.*)$
+///     replace:    db "\2\\n"; // \1
+///
+/// 2. replace label with db of stringified labels
+///     find:       ^(.+:)$
+///     replace:    db "\1\\n";
+///
+/// 3. manually fix quotes inside of quotes
+///
+
+str_1: db "Hello World!", 0;
+
+float AdrScr  = 65536;
+float ScrI = 0;
+float AdrDisk = 69536;
+float AdrKb   = 73536;
+
+#define BUFF_SIZE 4000
+float BuffI = 0;
+
+float WriteC(float C){
+    if(BuffI < BUFF_SIZE){
+        Buff[BuffI] = C;
+        BuffI++;
+        Buff[BuffI] = 0;
+    }
+}
+
+float EraseC(){
+    BuffI--;
+    Buff[BuffI] = 0;
+}
+
+float hasKb(){
+    if(AdrKb[0] != 0){
+        return 1;
+    }else{
+        return 0;
+    }
+}
+
+float getKb(){
+    float K = AdrKb[1];
+    AdrKb[0] = 1;
+    return K;
+}
+
+float PrintC(float C){
+    AdrScr[2*ScrI] = C;
+    AdrScr[2*ScrI+1] = 999;
+    ScrI++;
+}
+
+float PrintS(float S){
+    float I = 0;   
+    while(S[I] != 0){
+        PrintC(S[I]);
+        I++;
+    }
+}
+
+
+#ifdef DERP
+PrintS:
+// PrintS(S)
+   enter 1
+__20:
+   sstack EBP:-1,0
+__22:
+   rstack EAX,EBP:-1 /// this borks as udnerflow Err 6.-1
+   rstack EBX,EBP:2
+   add EBX,EAX
+   mov EAX,EBX
+   mov EBX,0
+   sub EBX,#EAX
+   fabs EBX,EBX
+   fsgn EBX,EBX
+// if (S[I]!=0
+   cmp 0,EBX
+   jz 588
+   rstack EAX,EBP:-1
+   rstack EBX,EBP:2
+   add EBX,EAX
+   mov EAX,EBX
+// PrintC arg #1 (float C)
+   push #EAX
+   mov ECX,1
+// PrintC(...)
+   call 360
+   add ESP,1
+   rstack EAX,EBP:-1
+// I++
+   inc EAX
+   sstack EBP:-1,EAX
+   jmp 456
+__21:
+__19:
+   leave 
+   ret 
+#endif
+
+
+float Backspace(){
+    ScrI--;
+    PrintC(' ');
+    ScrI--;
+}
+
+#define SCR_WIDTH 30
+#define SCR_HEIGHT 18
+
+float Newline(){
+    float col = ScrI % SCR_WIDTH
+    ScrI = ScrI - col + SCR_WIDTH
+}
+
+
+#define KEY_BACKSPACE 127
+#define KEY_ENTER 10
+#define KEY_F1 163
+#define KEY_F2 164
+#define KEY_F3 165
+#define KEY_F4 166
+#define KEY_F5 167
+
+float Print(float S){
+    float I = 0;
+    while(S[I] != 0){
+        float C = S[I];
+        if(C == '\n'){Newline();}
+        else{PrintC(C);}
+        I++;
+    }
+}
+
+float Help(){
+    Newline();
+    PrintS("F1 - help, F2 - save, F3 - load, F4 - run, F5 - clear");
+    Newline();
+}
+
+float Save(){
+    Newline();
+    PrintS("Save...");
+    
+    AdrDisk[0] = BuffI;
+    float I = 0;
+    while(I <= BuffI){
+        AdrDisk[I+1] = Buff[I];
+        I++;
+    }
+    AdrDisk[I] = 0;
+    PrintS("done.");
+    Newline();
+}
+
+float Load(){
+    Newline();
+    PrintS("Load...");
+    
+    BuffI = AdrDisk[0];
+    float I = 0;
+    while(I <= BuffI){
+        Buff[I] = AdrDisk[I+1];
+        I++;
+    }
+    PrintS("done.");
+    Newline();
+    Print(Buff);
+}
+
+float Run(){
+    Newline();
+    PrintS("Run");
+    Newline();
+}
+
+float Clear(){
+    BuffI = 0;
+    ScrI = 0;
+    float I = 0;
+    for(I = 0; I < SCR_HEIGHT; I++){
+        PrintC('.'); Newline();
+    }
+    ScrI = 0;
+    for(I = 0; I < SCR_HEIGHT; I++){
+        float X = 0;
+        for(X = 0; X < SCR_WIDTH; X++){
+            PrintC(' ');
+        }
+    }
+    ScrI = 0;
+    PrintS("Clear.");
+}
+
+float main(){
+    PrintS(str_1);
+    
+    while(1){
+        if(hasKb() == 1){
+            float K = getKb();
+            if(K == KEY_BACKSPACE){    EraseC(); Backspace();   }
+            else if(K == KEY_ENTER){   WriteC('\n'); Newline();}
+            else if(K == KEY_F1){      Help();          }
+            else if(K == KEY_F2){      Save();          }
+            else if(K == KEY_F3){      Load();          }
+            else if(K == KEY_F4){      Run();           }
+            else if(K == KEY_F5){      Clear();         }
+            else{                      WriteC(K); PrintC(K);  }   
+        }
+    }
+    
+    while(1){nop;}
+}
+
+Buff:
+alloc BUFF_SIZE; db 0;
+
+/*
+        if(hasKb() == 1){
+            float K = getKb();
+            if(K == KEY_BACKSPACE){
+                Backspace();
+            }else{
+                if(K == KEY_ENTER){
+                    Newline();
+                }else{
+                    if(K == KEY_F1){
+                        Help();
+                    }else{
+                        PrintC(K);
+                    }
+                }
+            }
+        }
+*/

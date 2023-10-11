@@ -1,0 +1,509 @@
+/// emitter emits code
+
+asme_arg1:
+float asme_rm1 = 0;
+float asme_seg1 = 0;
+float asme_val1 = 0;
+float asme_has_val1 = 0;
+asme_arg2:
+float asme_rm2 = 0;
+float asme_seg2 = 0;
+float asme_val2 = 0;
+float asme_has_val2 = 0;
+
+float codebuff;
+
+float asme_fixed_size = 0;
+
+float asm_emit_code(){
+                                                        trace_enter("asm_emit_code");
+    float cba = 0;
+    float RM = 0;
+    float cmd = 0;
+    float opcount = 0;
+    if(asmp_line_type == ASMP_LINETYPE_COMMAND){        
+        if(asme_fixed_size){
+            codebuff = Lbuff_new(6);
+            cba = Lbuff_array(codebuff);
+            ///              0     1   2     3     4     5   : 6 total
+            /// command: [opcode][rm][seg1][seg2][arg1][arg2]?
+            
+            /// --- go over the parsed args to figure out RM, segments and aregs
+            asme_calc1_rm();
+            asme_dbg("calc1 rm: %d\n", (asme_rm1 + 10000 * asme_rm2));
+            //asme_calc2_rm();
+            //asme_dbg("calc2 rm: %d\n", (asme_rm1 + 10000 * asme_rm2));
+            RM = asme_rm1 + 10000 * asme_rm2;
+            
+            /// command format class correction    
+            cmd = asmp_cmd;
+            cmd += 2000; /// fixed size
+            if(asme_seg1 != -4){cmd += 1000;}  /// 3k-4k if fixed and has seg1
+            if(asme_seg2 != -4){cmd += 10000;} /// 12k-13k if fixed and has seg2, 13k-14k if both
+            
+            /// segment naming order correction
+            if(asme_seg1 != -4){
+                if(asme_seg1 > 8){asme_seg1 -= 8;}
+                else{asme_seg1 += 8;}
+            }
+            if(asme_seg2 != -4){
+                if(asme_seg2 > 8){asme_seg2 -= 8;}
+                else{asme_seg2 += 8;}
+            }
+            
+            /// 1. push Opcode
+            cba[0] = cmd;
+            /// 2. push RM byte
+            cba[1] = RM;
+            /// 3. push segment1
+            cba[2] = asme_seg1;
+            /// 4. push segment2
+            cba[3] = asme_seg2;
+            /// 5. push value1
+            cba[4] = asme_val1;
+            /// 6. push value2
+            cba[5] = asme_val2;
+        
+            //asme_dbg("Emit command: (%d, %d, %d, %d, %d, %d)\n", 
+            //    cba[0], cba[1], cba[2], cba[3], cba[4], cba[5]);
+        }else{
+            codebuff = Lbuff_new(0);
+            cba = Lbuff_array(codebuff);
+            asme_calc1_rm();
+            RM = asme_rm1 + 10000 * asme_rm2;
+            
+            float cell = map_ii_at_or_null(asmc_opcount_map, asmp_cmd);
+            if(!cell){Error("asme: can't get opcount for cmd %d\n", asmp_cmd);}
+            opcount = *cell;
+            
+            cmd = asmp_cmd;
+            if(asme_seg1 != -4){cmd += 1000;}
+            if(asme_seg2 != -4){cmd += 10000;}
+            
+            /// segment naming order correction
+            if(asme_seg1 != -4){
+                if(asme_seg1 > 8){asme_seg1 -= 8;}
+                else{asme_seg1 += 8;}
+            }
+            if(asme_seg2 != -4){
+                if(asme_seg2 > 8){asme_seg2 -= 8;}
+                else{asme_seg2 += 8;}
+            }
+            
+            float need1 = asme_rm_needs_operand(asme_rm1);
+            float need2 = asme_rm_needs_operand(asme_rm2);
+            
+            asme_dbg("opcount %d, seg1 %d, seg2 %d, need1 %d, need2 %d\n",
+                opcount, asme_seg1, asme_seg2, need1, need2);
+            
+            
+            codebuff = Lbuff_push(codebuff, cmd);
+            if(opcount > 0){codebuff = Lbuff_push(codebuff, rm);}
+            if(asme_seg1 != -4){codebuff = Lbuff_push(codebuff, asme_seg1);}
+            if(asme_seg2 != -4){codebuff = Lbuff_push(codebuff, asme_seg2);}
+            if(opcount > 0){
+                if(need1){
+                    codebuff = Lbuff_push(codebuff, asme_val1);
+                }
+            }
+            if(opcount > 1){    
+                if(need2){
+                    codebuff = Lbuff_push(codebuff, asme_val2);
+                }   
+            }
+        }
+    }else if(asmp_line_type == ASMP_LINETYPE_ALLOC){
+        float num = asmp_arg_get_num(0);
+        if(num < 250){
+            codebuff = Lbuff_new(num);
+            float cba2 = Lbuff_array(codebuff);
+            memset(cba2, '\0', num);
+            asme_dbg("Emit alloc %d\n", num);
+        }else{
+            codebuff = Lbuff_new(0);
+            codebuff = Lbuff_push(codebuff, 0);
+            asme_dbg("Warning: emit alloc skip large number %d\n", num);
+        }
+    }else if(asmp_line_type == ASMP_LINETYPE_DB){
+        codebuff = Lbuff_new(0);
+        float dba = Lbuff_array(asmp_db_list);
+        float n_db = Lbuff_size(asmp_db_list) / 2;
+        float I;
+        for(I = 0; I < n_db; I++){
+            float type = dba[2*I];
+            float val = dba[2*I+1];
+            
+            if(type == ASMP_DBTYPE_NUMBER){
+                //printf("db push num [%d]\n", val);
+                codebuff = Lbuff_push(codebuff, val);
+            }else if(type == ASMP_DBTYPE_STRING){
+                float str = Lbuff_array(val);
+                float len = strlen(str);
+                //printf("db push str [%s]\n", str);
+                float I2;
+                for(I2 = 0; I2 < len; I2++){
+                    float C = str[I2];
+                    codebuff = Lbuff_push(codebuff, C);
+                }
+            }   
+        }
+        
+        /// report
+        asme_dbg("Emit DB: ");
+        float cba3 = Lbuff_array(codebuff);
+        float size = Lbuff_size(codebuff);
+        for(I = 0; I < size; I++){
+            asme_dbg("%d ", cba3[I]);
+        }
+        asme_dbg("\n");
+    }
+                                                        trace_exit("asm_emit_code");
+}
+
+float asme_print_codebuff(){
+    float cba = Lbuff_array(codebuff);
+    float cba_size = Lbuff_size(codebuff);
+    printf("codebuff: ");
+    float I;
+    for(I = 0; I < cba_size; I++){
+        printf("%d ", cba[I]);
+    }
+    printf("\n");
+}
+
+float asme_verify(float stream_verify){
+    float cba = Lbuff_array(codebuff);
+    float cba_size = Lbuff_size(codebuff);
+    
+    float ref = stack_alloc(cba_size);
+    fread(stream_verify, ref, cba_size);
+    
+    float good = 1;
+    float I;
+    float badI = 0;
+    for(I = 0; I < cba_size; I++){
+        if(cba[I] != ref[I]){
+            good = 0;
+            badI = I;
+            break;
+        }
+    }
+    if(good){
+        //asme_dbg("code verified\n");
+        return 1;
+    }else{
+        //asme_dbg("code mismatch\n");
+        if(cba_size == 6){
+            asme_dbg("cba[%d,%d,%d,%d,%d,%d]\n", cba[0], cba[1], cba[2], cba[3], cba[4], cba[5]);
+            asme_dbg("ref[%d,%d,%d,%d,%d,%d]\n", ref[0], ref[1], ref[2], ref[3], ref[4], ref[5]);
+        }else{
+            asme_dbg("cba[");
+            for(I = 0; I < cba_size; I++){
+                asme_dbg("%d,", cba[I]);
+            }
+            asme_dbg("]\n");
+            
+            asme_dbg("ref[");
+            for(I = 0; I < cba_size; I++){
+                asme_dbg("%d,", ref[I]);
+            }
+            asme_dbg("]\n");
+        }
+        float cbaX = cba[badI];
+        float refX = ref[badI];
+        asme_dbg("mismatch in byte %d: cba %d / ref %d\n", badI, cbaX, refX);
+        return 0;
+    }
+}
+
+float asme_rm_needs_operand(float rm){
+    return (rm == 0) || (rm == 25) || ((rm >= 34) && (rm <= 50));
+}
+
+float asme_rm_clear(){
+    asme_rm1 = 0;
+    asme_seg1 = -4; ///default segment indicator
+    asme_val1 = 0;
+    asme_has_val1 = 0;
+    
+    asme_rm2 = 0;
+    asme_seg2 = -4;
+    asme_val2 = 0;
+    asme_has_val2 = 0;
+}
+
+float asme_calc1_rm(){
+    asme_rm_clear();
+    
+    float type1L  = asmp_args[0];
+    float text1L  = asmp_args[1];
+    float deref1L = asmp_args[2];
+    float num1L   = asmp_args[3];
+        
+    float type1H  = asmp_args[4];
+    float text1H  = asmp_args[5];
+    float deref1H = asmp_args[6];
+    float num1H   = asmp_args[7];
+        
+    asme_calc1_rm_helper(
+        type1L, num1L, deref1L, 
+        type1H, num1H, deref1H, 
+        &asme_rm1, &asme_seg1, &asme_val1, &asme_has_val1);
+        
+    float type2L  = asmp_args[8];
+    float text2L  = asmp_args[9];
+    float deref2L = asmp_args[10];
+    float num2L   = asmp_args[11];
+        
+    float type2H  = asmp_args[12];
+    float text2H  = asmp_args[13];
+    float deref2H = asmp_args[14];
+    float num2H   = asmp_args[15];
+        
+    asme_calc1_rm_helper(
+        type2L, num2L, deref2L, 
+        type2H, num2H, deref2H, 
+        &asme_rm2, &asme_seg2, &asme_val2, &asme_has_val2);
+}
+
+///--------------- table-driven RM encoder ---------------
+asme_rm_table:
+///rm_offs
+///|  rm_val1 
+///|  |  rm_val2 
+///|  |  |  has_seg
+///|  |  |  |  has_val1
+///|  |  |  |  |  has_val2
+///|  |  |  |  |  |
+//---- arg1 = none ---
+db 0, 1, 0, 0, 0, 0; /// 0. non-non-i - 0-0-0 = no arg
+db 0, 1, 0, 0, 0, 0; /// 1. non-non-d - 0-0-1
+
+db 0, 1, 0, 0, 0, 0; /// 2. non-reg-i - 0-1-0
+db 0, 1, 0, 0, 0, 0; /// 3. non-reg-d - 0-1-1
+
+db 0, 1, 0, 0, 0, 0; /// 4. non-num-i - 0-2-0
+db 0, 1, 0, 0, 0, 0; /// 5. non-num-d - 0-2-1
+
+//---- arg1 = reg ---
+db 1, 1, 0, 0, 0, 0; /// 6. reg-non-i - 1-0-0 = eax
+db 17,1, 0, 0, 0, 0; /// 7. reg-non-d - 1-0-1 = #eax
+
+db 26,1, 0, 1, 1, 0; /// 8. reg-reg-i - 1-1-0 = eax:ebx
+db 17,1, 0, 1, 1, 0; /// 9. reg-reg-d - 1-1-1 = eax:#ebx = #eax:ebx = ebx[eax]
+
+// was 42, 34
+//db 42,1, 0, 0, 0, 1; /// 10. reg-num-i - 1-2-0 = eax:123 = eax+123
+//db 34,1, 0, 0, 0, 1; /// 11. reg-num-d - 1-2-1 = eax:#123 = eax[123]
+db 50,0, 0, 1, 0, 1; /// 10. reg-num-i - 1-2-0 = eax:123 = eax+123
+db 25,0, 0, 1, 0, 1; /// 11. reg-num-d - 1-2-1 = eax:#123 = eax[123]
+
+//---- arg1 = num
+db 0, 0, 0, 0, 1, 0; /// 12. num-non-i - 2-0-0 = 123
+db 25,0, 0, 0, 1, 0; /// 13. num-non-d - 2-0-1 = #123
+
+db 17,0, 1, 0, 1, 0; /// 14. num-reg-i - 2-1-0 = 123:ebx = ebx + 123
+db 32,0, 1, 0, 1, 0; /// 15. num-reg-d - 2-1-1 = 123:#ebx = #123:ebx = ebx[123]
+
+db 0, 0, 0, 0, 1, 1; /// 16. num-num-i - 2-2-0 = 123:123 = 246
+db 35,0, 0, 0, 1, 1; /// 17. num-num-d - 2-2-1 = 123:#123 = #123:123 = #246
+
+
+float asme_calc1_rm_helper(
+    float in_type1, float in_num1, float in_deref1,
+    float in_type2, float in_num2, float in_deref2,
+    float out_rm, float out_seg, float out_val, float out_has)
+{
+    //asme_dbg("asme_calc1_rm: type1 %d, num1 %d, deref1 %d, type2 %d, num2 %d, deref2 %d\n",
+    //    in_type1, in_num1, in_deref1, in_type2, in_num2, in_deref2);
+        
+    float has_deref = (in_deref1 || in_deref2);
+    float tabl_line = (in_type1*2*3 + in_type2*2 + has_deref);
+    float tabl_idx = 6*tabl_line;
+    //asme_dbg("tabl_line %d\n", tabl_line);
+    
+    float offs     = asme_rm_table[tabl_idx++];
+    float rm_val1  = asme_rm_table[tabl_idx++];
+    float rm_val2  = asme_rm_table[tabl_idx++];
+    float has_seg  = asme_rm_table[tabl_idx++];
+    float has_val1 = asme_rm_table[tabl_idx++];
+    float has_val2 = asme_rm_table[tabl_idx++];
+    
+    out_rm[0]  = offs + rm_val1*in_num1 + rm_val2*in_num2;
+                        /// so sometimes we get eax:ebx and sometimes ebx:2
+                        /// so we flip which value goes in the segment depending on 
+                        /// type of the second value (can't be both)
+    out_seg[0] = has_seg * (1+(in_type2 == 2)*in_num1+(in_type2 == 1)*in_num2) +(1-has_seg)*(-4);
+    out_val[0] = has_val1 * in_num1 + has_val2 * in_num2;
+    out_has[0] = has_val1 || has_val2;
+    
+    //if(asme_debug){
+    //    float d_rm = out_rm[0];
+    //    float d_seg = out_seg[0];
+    //    float d_val = out_val[0];
+    //    float d_has = out_has[0];
+    //    asme_dbg("out: rm %d, seg %d, val %d, has %d\n", d_rm, d_seg, d_val, d_has);
+    //}
+}
+
+/// --------------------- if-else (reference) RM encoder -----------------
+float asme_calc2_rm(){
+    asme_rm_clear();
+    
+    float type1L  = asmp_args[0];
+    float text1L  = asmp_args[1];
+    float deref1L = asmp_args[2];
+    float num1L   = asmp_args[3];
+    
+    float type1H  = asmp_args[4];
+    float text1H  = asmp_args[5];
+    float deref1H = asmp_args[6];
+    float num1H   = asmp_args[7];
+    
+    float type2L  = asmp_args[8];
+    float text2L  = asmp_args[9];
+    float deref2L = asmp_args[10];
+    float num2L   = asmp_args[11];
+    
+    float type2H  = asmp_args[12];
+    float text2H  = asmp_args[13];
+    float deref2H = asmp_args[14];
+    float num2H   = asmp_args[15];
+    
+    if(type1L == ASMP_ARGTYPE_NONE){
+        return; ///everything is zero    
+    }else if(type1L == ASMP_ARGTYPE_REGISTER){
+        if(type1H == ASMP_ARGTYPE_NONE){
+            if(deref1L || deref1H){
+                asme_rm1 = 17 + num1L;
+            }else{
+                asme_rm1 = 1 + num1L;
+            }
+        }else if(type1H == ASMP_ARGTYPE_REGISTER){
+            if(deref1L || deref1H){
+                asme_rm1 = 17 + num1L;
+                asme_seg1 = 1 + num1H;
+            }else{
+                asme_rm1 = 26 + num1L;
+                asme_seg1 = 1 + num1H;
+            }
+        }else if(type1H == ASMP_ARGTYPE_NUMBER){
+            if(deref1L || deref1H){
+                //asme_rm1 = 34 + num1L;
+                //asme_val1 = num1H;
+                asme_rm1 = 25;
+                asme_seg1 = 1+num1L;
+                asme_val1 = num1H;
+                asme_has_val1 = 1;
+            }else{
+                //asme_rm1 = 42 + num1L;
+                //asme_val1 = num1H;
+                asme_rm1 = 50;
+                asme_seg1 = 1+num1L;
+                asme_val1 = num1H;
+                asme_has_val1 = 1;
+            }
+        }
+    }else if(type1L == ASMP_ARGTYPE_NUMBER){
+        if(type1H == ASMP_ARGTYPE_NONE){
+            if(deref1L || deref1H){
+                asme_rm1 = 25;
+                asme_val1 = num1L;
+                asme_has_val1 = 1;
+            }else{
+                asme_rm1 = 0;
+                asme_val1 = num1L;
+                asme_has_val1 = 1;
+            }
+        }else if(type1H == ASMP_ARGTYPE_REGISTER){
+            if(deref1L || deref1H){
+                asme_rm1 = 17 + num1H;
+                asme_val1 = num1L;
+                asme_has_val1 = 1;
+            }else{
+                asme_rm1 = 32+num1H;
+                asme_val1 = num1L;
+                asme_has_val1 = 1;
+            }
+        }else if(type1H == ASMP_ARGTYPE_NUMBER){
+            if(deref1L || deref1H){
+                asme_rm1 = 35;
+                asme_val1 = num1L+num1H;
+                asme_has_val1 = 1;
+            }else{
+                asme_rm1 = 0;
+                asme_val1 = num1L+num1H;
+                asme_has_val1 = 1;
+            }
+        }
+    }
+    
+    if(type2L == ASMP_ARGTYPE_NONE){
+        return; ///everything is zero    
+    }else if(type2L == ASMP_ARGTYPE_REGISTER){
+        if(type2H == ASMP_ARGTYPE_NONE){
+            if(deref2L || deref2H){
+                asme_rm2 = 17 + num2L;
+            }else{
+                asme_rm2 = 1 + num2L;
+            }
+        }else if(type2H == ASMP_ARGTYPE_REGISTER){
+            if(deref2L || deref2H){
+                asme_rm2 = 17 + num2L;
+                asme_seg2 = 1 + num2H;
+            }else{
+                asme_rm2 = 26 + num2L;
+                asme_seg2 = 1 + num2H;
+            }
+        }else if(type2H == ASMP_ARGTYPE_NUMBER){
+            if(deref2L || deref2H){
+                //asme_rm1 = 34 + num1L;
+                //asme_val1 = num1H;
+                asme_rm2 = 25;
+                asme_seg2 = 1+num2L;
+                asme_val2 = num2H;
+                asme_has_val2 = 1;
+            }else{
+                //asme_rm1 = 42 + num1L;
+                //asme_val1 = num1H;
+                asme_rm2 = 50;
+                asme_seg2 = 1+num2L;
+                asme_val2 = num2H;
+                asme_has_val2 = 1;
+            }
+        }
+    }else if(type2L == ASMP_ARGTYPE_NUMBER){
+        if(type2H == ASMP_ARGTYPE_NONE){
+            if(deref2L || deref2H){
+                asme_rm2 = 25;
+                asme_val2 = num2L;
+                asme_has_val2 = 1;
+            }else{
+                asme_rm2 = 0;
+                asme_val2 = num2L;
+                asme_has_val2 = 1;
+            }
+        }else if(type2H == ASMP_ARGTYPE_REGISTER){
+            if(deref2L || deref2H){
+                asme_rm2 = 17 + num2H;
+                asme_val2 = num2L;
+                asme_has_val2 = 1;
+            }else{
+                asme_rm2 = 32+num2H;
+                asme_val2 = num2L;
+                asme_has_val2 = 1;
+            }
+        }else if(type1H == ASMP_ARGTYPE_NUMBER){
+            if(deref1L || deref1H){
+                asme_rm2 = 35;
+                asme_val2 = num2L+num2H;
+                asme_has_val2 = 1;
+            }else{
+                asme_rm2 = 0;
+                asme_val2 = num2L+num2H;
+                asme_has_val2 = 1;
+            }
+        }
+    }
+}
+

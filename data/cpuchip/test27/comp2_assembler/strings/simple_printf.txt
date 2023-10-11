@@ -1,0 +1,278 @@
+#ifndef SIMPLE_PRINTF_GUARD
+#define SIMPLE_PRINTF_GUARD
+/// simple printf and itoa
+
+#include "util/stackalloc2.txt"
+
+pwrs_of_ten:
+db 1,  10,  100,  1000,  10000,  100000,  1000000,  10000000,  100000000;  
+
+pwrs_of_one_tenth:
+db 1,  0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001, 0.00000001;
+
+float get_n_digit(float num, float digit){
+    //float I = 0;
+    //for(I = 0; I < digit; I++){
+    //    num = num / 10;
+    //}
+    num = num * pwrs_of_one_tenth[digit];
+    num = num % 10;
+    fint num; // truncate
+    //num = floor1(num);
+    return num;
+}
+
+//str_digits: db '0123456789'; db 0;
+
+/// number to string
+/// buff must be 10 bytes
+/// "- 3 3 2 2 2 1 1 1\0", max num is 99 million
+/// .0.1.2.3.4.5.6.7.8.9.
+//float itoa(float buff, float d){
+//    float strI = 0;
+//    if(d < 0){
+//        d = -d;
+//        buff[strI++] = '-';
+//    }
+//    /// loop for every digit
+//    float lead_zero = 1; /// skip leading zeroes
+//    float I = 0;
+//    for(I = 0; I < 8; I++){
+//        float dig = get_n_digit(d, 7-I);
+//        if(lead_zero){
+//            if(dig != 0){lead_zero = 0;}
+//        }
+//        if(!lead_zero){
+//            buff[strI++] = '0'+dig; //str_digits[dig];//'0'+dig;
+//        }
+//    }
+//    if(lead_zero){buff[strI++] = '0';} /// special case of all-zeroes
+//    buff[strI] = 0;
+//    return buff;
+//}
+
+float floor(float d){fint d; return d;}
+float frac(float d){ffrac d; return d;}
+float round(float d){frnd d; return d;}
+
+/// converts to number the integer part of the string
+float atoi_integer(float str, float L){
+    //printf("atoi_i [%s],%d\n", str, L);
+    float num = 0;
+    float strI = 0;
+    for(strI = 0; strI < L; strI++){
+        float d = str[strI] - '0'
+        num = num*10 + d;
+    }
+    return num;
+}
+
+float atoi_frac(float str, float L){
+    //printf("atoi_f [%s],%d\n", str, L);
+    float num = 0;
+    float mult = 0.1;
+    float strI = 0;
+    for(strI = 0; strI < L; strI++){
+        float d = str[strI] - '0';
+        num = num + d*mult;
+        mult *= 0.1;
+    }
+    return num;
+}
+
+float atoi(float str){
+    //printf("atoi [%s]\n", str);
+    float num = 0;
+    float is_neg = 0;
+    if(str[0] == '-'){is_neg = 1; str++;}    
+    float L = strlen(str);
+    float pt = strchr(str, '.');
+    if(pt){
+        float L1 = pt-str;
+        float L2 = L - L1-1;
+        num = atoi_integer(str, L1);
+        str = pt+1;
+        float num2 = atoi_frac(str, L2);
+        num += num2;
+    }else{
+        num = atoi_integer(str, L);
+    }
+    if(is_neg){num = -num;}    
+    return num;
+}
+
+
+//float atoi(float str){
+//    float num = 0;
+//    
+//    float is_neg = 0;
+//    if(str[0] == '-'){is_neg = 1; str++;}
+//    
+//    float L = strlen(str);
+//    float strI = 0;
+//    for(strI = 0; strI < L; strI++){
+//        float d = str[strI] - '0'
+//        num = num*10 + d;
+//    }
+//    if(is_neg){num = -num;}    
+//    return num;
+//}
+
+
+float itoa_ndigits = 4;
+
+float itoa(float buff, float d){
+    float strI = 0;
+    if(d < 0){
+        d = -d;
+        buff[strI++] = '-';
+    }
+    
+
+    itoa_helper(buff, d, &strI);    
+
+    /// fraction handling
+    float d_frac = frac(d);    
+    if(d_frac != 0){ /// fractional part
+        buff[strI++] = '.';
+        d_frac = d_frac*pwrs_of_ten[itoa_ndigits];
+        /// we now have a fractional part like 12.34 becomes 3399.9999...
+        /// if we floor, we get 3399
+        /// if we round, do we get 3400?
+        d_frac = round(d_frac);
+        itoa_helper_frac(buff, d_frac, &strI);    
+    }
+    
+    buff[strI] = 0;
+    return buff;
+}
+
+float itoa_helper_frac(float buff, float d, float p_strI){
+    float strI = p_strI[0];
+    /// loop for every digit
+    float I = 0;
+    float dig = 0;
+    float n_digs = 7;
+    
+    for(I = 0; I < itoa_ndigits; I++){
+        dig = get_n_digit(d, itoa_ndigits-I-1);
+        buff[strI++] = '0'+dig;
+    }        
+
+    p_strI[0] = strI;
+}
+
+float itoa_helper(float buff, float d, float p_strI){
+    float strI = p_strI[0];
+    /// loop for every digit
+    float I = 0;
+    float dig = 0;
+
+    float lead_zero = 1; /// skip leading zeroes
+    for(I = 0; I < 8; I++){
+        dig = get_n_digit(d, 7-I);
+        if(lead_zero){
+            if(dig != 0){lead_zero = 0;}
+        }
+        if(!lead_zero){
+            buff[strI++] = '0'+dig; //str_digits[dig];//'0'+dig;
+        }   
+    }
+    if(lead_zero){buff[strI++] = '0';} /// special case of all-zeroes        
+    
+    p_strI[0] = strI;
+}
+
+
+
+/// puts a number to stdout
+float putnum(float n){
+    float buff = stack_alloc(20);
+    itoa(buff, n);
+    putline(buff); 
+}
+
+float printf_v(float p_format){
+/// formatted output
+    float args = p_format;
+    float argI = 1;
+    float I = 0;
+    float format = *p_format;
+    while(format[I] != 0){
+        float C = format[I];
+        if(C == '%'){
+            I++;
+            float C2 = format[I];
+            I++;
+            float arg = 0;
+            if(C2 == 's'){
+                arg = args[argI++];
+                if(arg){
+                    putline(arg);
+                }else{
+                    putline("(null)");
+                }
+            }else if(C2 == 'd'){
+                arg = args[argI++];
+                putnum(arg);
+            }else if(C2 == 'c'){
+                arg = args[argI++];
+                putch(arg);
+            }else if(C2 == 'i'){
+                arg = args[argI++];
+                while(arg--){
+                    putch(' ');
+                }
+            }else if(C2 == '%'){
+                putch('%');
+            }
+        }else{
+            putch(C);
+            I++;
+        }
+    }
+}
+
+float printf(float format){
+    printf_v(&format);
+}
+
+float printf_ss(float stream, float format){
+    float prev_cout = cur_stream_out;
+    cur_stream_out = stream;
+    printf_v(&format);
+    cur_stream_out = prev_cout;
+}
+
+
+/// formatted output
+//float printf(float format){
+//    float args = &format;
+//    float argI = 1;
+//    float I = 0;
+//    while(format[I] != 0){
+//        float C = format[I];
+//        if(C == '%'){
+//            I++;
+//            float C2 = format[I];
+//            I++;
+//            float arg = 0;
+//            if(C2 == 's'){
+//                arg = args[argI++];
+//                putline(arg);
+//            }else if(C2 == 'd'){
+//                arg = args[argI++];
+//                putnum(arg);
+//            }else if(C2 == 'c'){
+//                arg = args[argI++];
+//                putch(arg);
+//            }
+//        }else{
+//            putch(C);
+//            I++;
+//        }
+//    }
+//}
+
+#endif
+

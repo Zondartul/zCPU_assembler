@@ -1,0 +1,401 @@
+/// parser
+
+///  ----- parser -----------
+
+float asm_p_has_tok_I(float size, float I){return (size > (2*I));}
+
+float asm_p_tok_I_type(float arr, float I){return arr[2*I];}
+float asm_p_tok_I_lstr(float arr, float I){return arr[2*I+1];}
+
+float asmp_arr = 0;
+float asmp_size = 0;
+float asmp_I = 0;
+float asmp_tok = 0;
+
+/// ------- info - general ------------
+float asmp_line_type = 0;
+#define ASMP_LINETYPE_NONE 0
+#define ASMP_LINETYPE_COMMAND 1
+#define ASMP_LINETYPE_LABEL 2
+#define ASMP_LINETYPE_DB 3
+#define ASMP_LINETYPE_ALLOC 4
+/// ------- info - command ------------
+/// command as seen by the parser:
+/// [cmd] [arg0] [arg2]
+///       /    \
+/// (#)arg0L:(#)arg0H  and same for arg2
+/// so a command has 4 half-args
+/// which is a dense representation of many addressing modes.
+float asmp_cmd = 0;
+/// args:
+float asmp_argI = 0;
+#define ASMP_ARGTYPE_NONE 0
+#define ASMP_ARGTYPE_REGISTER  1
+#define ASMP_ARGTYPE_NUMBER 2
+asmp_args:
+/// 0 - arg0L   /// 0 - argtype
+/// 4 - arg0H   /// 1 - text (lstr/text of number or reg name)
+/// 8 - arg1L   /// 2 - deref?
+/// 12 - arg1H  /// 3 - num (register index OR parsed number value)
+/// 16 - \0
+alloc 16; db 0;
+
+float asmp_args_clear(){
+    memset(asmp_args, '\0', 12);
+}
+
+float asmp_arg_set_type(float I, float n){asmp_args[4*I] = n;}
+float asmp_arg_set_text(float I, float n){asmp_args[4*I+1] = n;}
+float asmp_arg_set_deref(float I, float n){asmp_args[4*I+2] = n;}
+float asmp_arg_set_num(float I, float n){asmp_args[4*I+3] = n;}
+float asmp_arg_get_type(float I){return asmp_args[4*I];}
+float asmp_arg_get_text(float I){return asmp_args[4*I+1];}
+float asmp_arg_get_deref(float I){return asmp_args[4*I+2];}
+float asmp_arg_get_num(float I){return asmp_args[4*I+3];}
+/// ------ end info-command --------------
+
+/// ------ info-db -----------------------
+float asmp_db_list = 0;
+#define ASMP_DBTYPE_NONE 0
+#define ASMP_DBTYPE_NUMBER 1
+#define ASMP_DBTYPE_STRING 2
+
+float asmp_db_add_num(float n){
+    asmp_db_list = Lbuff_push(asmp_db_list, ASMP_DBTYPE_NUMBER);
+    asmp_db_list = Lbuff_push(asmp_db_list, n);
+}
+
+float asmp_db_add_string(float str){
+    asmp_db_list = Lbuff_push(asmp_db_list, ASMP_DBTYPE_STRING);
+    asmp_db_list = Lbuff_push(asmp_db_list, str);
+}
+///------ end info-db ---------------------
+
+float asmp_has_next_tok(){
+    return ((2*asmp_I) < asmp_size);
+}
+
+float asmp_next_tok(){
+    if((2*asmp_I) < asmp_size){
+        asmp_tok = asmp_arr + 2*asmp_I;
+        asmp_I++;
+        
+        ///debug
+        //float type = asmp_tok[0];
+        //float lstr = asmp_tok[1];
+        //float str = Lbuff_array(lstr);
+        //printf("arr %d: %s:[%s]\n", asmp_I, type, str); 
+    }else{
+        printf("out of tokens (token I %d (*2=%d) >= size %d)\n", asmp_I, 2*asmp_I, asmp_size);
+    }
+}
+
+float asmp_prev_tok(){
+    if(asmp_I >= 2){
+        asmp_I--;
+        asmp_tok = asmp_arr + 2*asmp_I;        
+    }else{
+        printf("out of tokens (token I %d < 2)\n", asmp_I);
+    }
+}
+
+
+float asm_parse(float lb_toks){
+                                            trace_enter("asm_parse");
+    memset(asmp_args, '\0', 16);
+    //printf("asm_parse v1\n");
+    float size = Lbuff_size(lb_toks);
+    float arr = Lbuff_array(lb_toks);
+
+    asmp_arr = arr;
+    asmp_size = size;    
+    asmp_I = 0;
+    asmp_tok = arr;
+    
+    asmp_line_type = 0;
+    /// possible productions:
+    /// alpha \: -> Label
+    /// :cmd: sp Arg (\, Arg)? -> Command
+    ///  :reg: -> HalfArg
+    ///  num -> HalfArg
+    ///  \# :reg: -> HalfArg
+    ///  \# num -> HalfArg
+    ///  HalfArg -> Arg
+    ///  HalfArg \: HalfArg -> Arg
+    
+    /// railroad diagram:
+    ///                           --> Command
+    ///                         /
+    /// Start --> :cmd: -> sp -> Arg -> \, -> Arg --> Command
+    ///        \                         \           /
+    ///        |                          -----------
+    ///        +---> alpha -> \: -> Label
+    ///        |
+    ///        +---> db ---> num ---------> Db
+    ///        |       / \             / \
+    ///        |       |  -> string ->/  |
+    ///        |       |  \          /   |
+    ///        |       |  -> alpha >     |
+    ///        |       \                 /
+    ///        |         <--- \,  <-----
+    ///        |
+    ///        +---> alloc -> num -> Alloc
+    ///
+    /// Start --> HalfArg -> \: -> HalfArg --> Arg
+    ///                    \               /
+    ///                     ---------------
+    ///
+    /// Start --> \# -------> :reg: -----> HalfArg
+    ///         \    / \               /
+    ///          ----   --> \- --> num - 
+    ///                  \     /
+    ///                   -----
+    ///
+    asmp_next_tok();
+    
+    if(asmp_is_cmd(asmp_tok)){                          asmp_dbg("+cmd ");    /// mov
+        asmp_next_tok();
+        if(asmp_is_sp(asmp_tok)){                       asmp_dbg("+sp ");/// ' '
+            if(asmp_has_next_tok()){                    asmp_dbg("?+ ");
+                asmp_next_tok();
+                asmp_argI = 0;
+                if(asmp_parse_Arg(asmp_tok)){               asmp_dbg("+arg ");/// arg
+                    //printf("parse: is Command\n");
+                    if(asmp_has_next_tok()){        
+                        asmp_next_tok();
+                        if(asmp_is_comma(asmp_tok)){        asmp_dbg("+, ");  /// ,
+                            asmp_next_tok();
+                            asmp_argI = 2;
+                            if(asmp_parse_Arg(asmp_tok)){   asmp_dbg("+arg ");/// arg
+                                asmp_line_type = ASMP_LINETYPE_COMMAND;
+                                goto asmp_good_exit;
+                            }else{                           asmp_dbg("-arg ");}
+                        }else{                               asmp_dbg("-, ");}
+                    }else{                                  asmp_dbg(" end ");
+                        asmp_line_type = ASMP_LINETYPE_COMMAND
+                        goto asmp_good_exit;
+                    }
+                }else{                                       asmp_dbg("-arg ");}
+            }else{                                       asmp_dbg("?-end ");
+                asmp_line_type = ASMP_LINETYPE_COMMAND
+                goto asmp_good_exit; // e.g. 'leave'
+            }
+        }else{                                           asmp_dbg("-sp ");}  
+    }else if(asmp_is_db(asmp_tok)){                     asmp_dbg("+db ");
+        asmp_next_tok();
+        if(asmp_is_sp(asmp_tok)){                       asmp_dbg("+sp ");
+            asmp_next_tok();
+            if(asmp_is_db_arg(asmp_tok)){               asmp_dbg("+db_arg ");
+                while(asmp_has_next_tok()){
+                    asmp_next_tok();
+                    if(asmp_is_comma(asmp_tok)){        asmp_dbg("+, ");
+                        asmp_next_tok();    
+                        if(asmp_is_db_arg(asmp_tok) == 0){ asmp_dbg("-db_arg ");
+                            asmp_line_type = ASMP_LINETYPE_DB;
+                            goto asmp_bad_exit;
+                        }else{                          asmp_dbg("+db_arg ");}
+                    }else{                               asmp_dbg("-, ");}
+                }                                       asmp_dbg("end ");
+                asmp_line_type = ASMP_LINETYPE_DB;
+                goto asmp_good_exit;
+            }else{                                       asmp_dbg("-db_arg ");}
+        }else{                                           asmp_dbg("-sp ");}  
+    }else if(asmp_is_alloc(asmp_tok)){                  asmp_dbg("+alloc ");
+        asmp_next_tok();
+        if(asmp_is_sp(asmp_tok)){                       asmp_dbg("+sp ");
+            asmp_next_tok();
+            if(asmp_is_num(asmp_tok)){                   asmp_dbg("+num ");
+                asmp_line_type = ASMP_LINETYPE_ALLOC;
+                goto asmp_good_exit;
+            }else{                                       asmp_dbg("-num ");}   
+        }else{                                           asmp_dbg("-sp ");}
+    }else if(asmp_is_alpha(asmp_tok)){                  asmp_dbg("+alpha ");
+        //printf("-cmd;+a ");
+        asmp_next_tok();
+        if(asmp_is_colon(asmp_tok)){                    asmp_dbg("+: ");
+            //printf("parse: is Label\n");
+            asmp_line_type = ASMP_LINETYPE_LABEL;
+            goto asmp_good_exit;
+        }else{                                           asmp_dbg("-: ");}
+    }else{                                               asmp_dbg("-cmd/alpha/db ");}
+    //printf("parse failed\n");
+    
+    asmp_bad_exit:
+                                                        trace_exit("asm_parse");
+    return 0;
+    
+    asmp_good_exit:
+    /// verify that there are no tokens left
+    if(asmp_has_next_tok()){
+        if(asmp_debug){
+            printf("parse internal error: tokens remain (%d / %d parsed)", asmp_I+1, asmp_size/2);
+            printf("(I*2 %d < size %d)\n", asmp_I*2, asmp_size);
+        }
+                                                            trace_exit("asm_parse");
+        return 1;
+    }
+    
+    if(asmp_line_type == ASMP_LINETYPE_NONE){
+        HaltError("internal: linetype 0");
+    }
+    asmp_dbg("parse: line type = %d\n", asmp_line_type);
+                                                            trace_exit("asm_parse");
+    return 1;
+}
+
+
+float asmp_str_is_reg(float str){
+    float table = regTable;
+    float I = 0;
+    while(table[I] != 0){
+        float str2 = table[I];
+        if(strcmp(str, str2) == 0){
+            asmp_arg_set_num(asmp_argI, I); /// register index
+            return 1;
+        }
+        I++;
+    }
+    return 0;
+}
+
+float asmp_str_is_cmd(float str){
+    float use_map = 1;
+    if(use_map){
+        float map = asmc_cmd_map;
+        float p_val = map_si_at_or_null(map, str);
+        if(p_val){
+            asmp_cmd = *p_val;
+            return 1;
+        }else{
+            return 0;
+        }
+    }else{
+        float table = cmdTable;
+        float I = 0;
+        while(table[2*I+1] != 0){
+            float cmd_val = table[2*I];
+            float cmd_str = table[2*I+1];
+            if(strcmp(str, cmd_str) == 0){
+                asmp_cmd = cmd_val;
+                return 1;
+            }
+            I++;
+        }
+        return 0;
+    }
+}
+
+float asmp_is_arg_inner(float p_tok){
+    float type = p_tok[0];    
+    float lstr = p_tok[1];
+    float str = Lbuff_array(lstr);
+    if(type == str_tok_alpha){
+        asmp_arg_set_text(asmp_argI, lstr);
+        //float str = Lbuff_array(lstr);
+        if(asmp_str_is_reg(str)){
+            asmp_arg_set_type(asmp_argI, ASMP_ARGTYPE_REGISTER);
+            return 1;
+        }    
+    }else if(type == str_tok_num){
+        //float str = Lbuff_array(lstr);
+        //printf("asmp_is_arg_inner:\n lstr [%s]\n", str);
+        asmp_arg_set_text(asmp_argI, lstr);
+        float num = Lstr_atoi(lstr);
+        //printf("asmp_is_arg_inner:\n lstr [%s]\n got number [%d]\n", str, num);
+        asmp_arg_set_num(asmp_argI, num); /// constant number
+        asmp_arg_set_type(asmp_argI, ASMP_ARGTYPE_NUMBER);
+        return 1;
+    }
+    return 0;
+}
+
+float asmp_parse_Arg(float p_tok){
+    if(asmp_is_exact(p_tok, "#")){  asmp_dbg("(?+#) ");
+        asmp_arg_set_deref(asmp_argI, 1);
+        asmp_next_tok();
+        p_tok = asmp_tok;
+    }else{                           asmp_dbg("(?-#) ");}
+    
+    if(asmp_is_arg_inner(p_tok)){   asmp_dbg("(+ai) ");
+    }else{                           asmp_dbg("(-ai) ");
+        return 0;
+    }
+    
+    asmp_parse_arg_good:
+    if(asmp_has_next_tok()){                    asmp_dbg("(?+) ");
+        asmp_next_tok(); p_tok = asmp_tok;
+        if(asmp_is_colon(p_tok)){               asmp_dbg("(+:) ");   
+            asmp_argI++;  
+            asmp_next_tok(); p_tok = asmp_tok;
+            if(asmp_is_arg_inner(p_tok)){       asmp_dbg("(+ai) ");
+                return 1; /// arg is (#)something:something
+            }else{                               asmp_dbg("(-ai) ");
+                return 0;
+            }
+        }else{                                   asmp_dbg("(-:) ");
+            asmp_prev_tok();
+            return 1; // something else that isn't for us to deal with
+        }
+    }else{         /// end of tokens, thats fine 
+                                                 asmp_dbg("(?-end) ");
+        return 1;  /// arg is (#)something
+    }
+    
+}
+
+float asmp_is_db_arg(float p_tok){
+    float type = p_tok[0];
+    float val = p_tok[1];
+    
+    if(type == str_tok_num){
+        float num = Lstr_atoi(val);
+        //printf("db num [%d]\n", num);
+        asmp_db_add_num(num);
+        return 1;
+    }else if(type == str_tok_string){
+        //float str = Lbuff_array(val);
+        //printf("db str [%s]\n", str);
+        asmp_db_add_string(val);
+        return 1;
+    }
+    return 0;
+}
+
+float asmp_is_cmd(float p_tok){
+    float type = p_tok[0];
+    
+    if(type == str_tok_alpha){
+        float lstr = p_tok[1];
+        float str = Lbuff_array(lstr);
+        if(asmp_str_is_cmd(str)){
+            return 1;
+        }    
+    }
+    return 0;
+}
+
+float asmp_is_sp(float p_tok)    {return asmp_is_type(p_tok, str_tok_space);}
+float asmp_is_num(float p_tok)   {return asmp_is_type(p_tok, str_tok_num);}
+float asmp_is_alpha(float p_tok) {return asmp_is_type(p_tok, str_tok_alpha);}
+float asmp_is_string(float p_tok){return asmp_is_type(p_tok, str_tok_string);}
+float asmp_is_hash(float p_tok)  {return asmp_is_exact(p_tok, "#");}
+float asmp_is_colon(float p_tok) {return asmp_is_exact(p_tok, ":");}
+float asmp_is_db(float p_tok)    {return asmp_is_exact(p_tok, "db");}
+float asmp_is_comma(float p_tok) {return asmp_is_exact(p_tok, ",");}
+float asmp_is_alloc(float p_tok) {return asmp_is_exact(p_tok, "alloc");}
+
+float asmp_is_exact(float p_tok, float str){
+    float type = p_tok[0];
+    float lstr = p_tok[1];
+    float str2 = Lbuff_array(lstr);
+    if(strcmp(str2, str) == 0){
+        return 1;
+    }            
+    return 0;
+}
+
+float asmp_is_type(float p_tok, float type){
+    return (p_tok[0] == type);
+}
+
+

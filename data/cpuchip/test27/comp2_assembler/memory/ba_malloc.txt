@@ -1,0 +1,46 @@
+/// bump allocator
+
+float bump_alloc_base = 0;
+float bump_alloc_size = 0;
+float bump_alloc_ptr = 0;
+float bump_alloc_max = 0;
+
+float bump_alloc_init(float buff, float size){                      trace_enter("bump_alloc_init");
+    bump_alloc_base = buff;
+    bump_alloc_size = size;
+    bump_alloc_ptr = buff;                                          trace_exit("bump_alloc_init");
+    bump_alloc_max = buff + size;
+}
+
+float ba_malloc(float size){                                        trace_enter("ba_malloc");
+    float new_ptr = bump_alloc_ptr + size;
+    if(new_ptr > bump_alloc_max){
+        ErrorTrace("ba_malloc: out of memory (size %d)", size);
+    }
+    float ptr = bump_alloc_ptr;
+    bump_alloc_ptr += size;                                         trace_exit("ba_malloc");
+    //printf("ba_malloc(%d) = %d\n", size, ptr);
+    return ptr;
+}
+
+float ba_realloc(float ptr, float size){                            trace_enter("ba_realloc");
+    if(size > bump_alloc_size){
+        ErrorTrace("ba_malloc: realloc too big (size %d)", size);
+    }
+    float ptr2 = ba_malloc(size);
+    memcpy(ptr2, ptr, size);                                        trace_exit("ba_realloc");
+    return ptr;
+}
+
+float ba_free(float ptr){
+    /// do nothing
+}
+
+/// used to save and load bump allocator state in a function call
+float ba_tell(){
+    return bump_alloc_ptr;
+}
+
+float ba_seek(float ptr){
+    bump_alloc_ptr = ptr;
+}

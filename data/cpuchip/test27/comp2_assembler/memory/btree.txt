@@ -1,0 +1,328 @@
+#ifndef BTREE_GUARD
+#define BTREE_GUARD
+/// binary tree implementation
+
+
+/// ---------- binary tree --------------
+
+/// btree
+/// [0] typeof_btree
+/// [1] p_left
+/// [2] p_right
+/// [3] key
+/// [4] val
+#define BTREE_TYPEOF 0
+#define BTREE_LEFT 1
+#define BTREE_RIGHT 2
+#define BTREE_KEY 3
+#define BTREE_VAL 4
+
+typeof_btree: db "binary_tree", 0;
+float sizeof_btree = 5;
+
+/// create an empty node
+float make_btree(float buff){
+    buff[BTREE_TYPEOF] = typeof_btree;
+    buff[BTREE_LEFT] = 0;
+    buff[BTREE_RIGHT] = 0;
+    buff[BTREE_KEY] = 0;
+    buff[BTREE_VAL] = 0;   
+}
+
+float new_btree(){                      trace_enter("new_btree");
+    float self = malloc(sizeof_btree);
+    make_btree(self);                   trace_exit("new_btree");
+    return self;
+}
+
+float new_btree_internal(){             trace_enter("new_btree_internal");
+    float self = ba_malloc(sizeof_btree);
+    make_btree(self);                   trace_exit("new_btree_internal");
+    return self;
+}
+
+
+float assign_new_btree(float out_self, float k, float v){ trace_enter("assign_new_btree");
+    float self = ba_malloc(sizeof_btree);
+    make_btree(self);
+    btree_node_set_keyval(self, k, v);
+    out_self[0] = self;                                   trace_exit("assign_new_btree");
+}
+
+/// overwrite the k,v of a node
+float btree_node_set_keyval(float self, float k, float v){  trace_enter("btree_node_set_keyval");
+    assert_type(self, typeof_btree);
+    self[BTREE_KEY] = k;
+    self[BTREE_VAL] = v;                                    trace_exit("btree_node_set_keyval");
+}
+
+
+/// get the ptr to node whose address is k
+float btree_get_node(float self, float k){      trace_enter("btree_get_node");
+    assert_type(self, typeof_btree);
+    float key = self[BTREE_KEY];
+    float left;
+    float right;
+    float res;
+    if(k < key){
+        left = self[BTREE_LEFT];
+        if(left){
+            res = btree_get_node(left, k);
+        }else{
+            res = 0;
+        }
+    }else if(k > key){
+        right = self[BTREE_RIGHT];
+        if(right){
+            res = btree_get_node(right, k);     
+        }else{
+            res = 0;
+        }
+    }else if(k == key){                         
+        res = self;
+    }else{                                      
+        res = 0;
+        Error("impossibru");
+    }                                           trace_exit("btree_get_node");
+    return res;
+}
+
+/// returns true if a node with given key exists
+float btree_has(float self, float k){           trace_enter("btree_has");
+    float node = btree_get_node(self, k);       trace_exit("btree_has");
+    return (node != 0);
+}
+
+/// get the value of an existing node by key k
+float btree_get(float self, float k){           trace_enter("btree_get");
+    assert_type(self, typeof_btree);
+    float node = btree_get_node(self, k);
+    if(node){
+        float val = node[BTREE_VAL];            trace_exit("btree_get");
+        return val;
+    }else{                                      trace_exit("btree_get");
+        return 0;
+    }
+}
+
+/// change the value of an existing node by key k
+float btree_set(float self, float k, float v){  trace_enter("btree_set");
+    assert_type(self, typeof_btree);
+    float node = btree_get_node(self, k);
+    if(node){
+        node[BTREE_VAL] = v;
+    }                                           trace_exit("btree_set");
+}
+
+/// add a new node with value v and key k
+float btree_insert(float self, float k, float v){       trace_enter("btree_insert");
+    assert_type(self, typeof_btree);
+    float key = self[BTREE_KEY];
+    float left;
+    float right;
+    if(K < key){
+        left = self[BTREE_LEFT];
+        if(left){
+            btree_insert(left, k, v);
+        }else{
+            assign_new_btree(self+BTREE_LEFT, k, v);
+        }
+    }else if(K > key){
+        right = self[BTREE_RIGHT];
+        if(right){
+            btree_insert(right, k, v);
+        }else{
+            assign_new_btree(self+BTREE_RIGHT, k, v);
+        }
+    }else if(K == key){
+        self[BTREE_VAL] = v;
+    }                                                   trace_exit("btree_insert");
+}
+
+
+/// count the elements in a binary tree
+float btree_size(float self){              trace_enter("btree_size");
+    assert_type(self, typeof_btree);
+    float size = 1;
+    float left = self[BTREE_LEFT];    
+    float right = self[BTREE_RIGHT];
+    if(left){
+        size = size + btree_size(left);
+    }
+    if(right){
+        size = size + btree_size(right);
+    }                                      trace_exit("btree_size");
+    return size;
+}
+
+/// stores the elements in a buffer through a linear walk
+/// only kv-pairs, so each element has size 2
+/// returns bytes used
+float btree_to_linarray(float self, float buff){    trace_enter("btree_to_linarray");
+    assert_type(self, typeof_btree);
+    float key = self[BTREE_KEY];
+    float val = self[BTREE_VAL];
+    float buffI = 0;
+    float pbuff = buff;
+    float left = self[BTREE_LEFT];
+    float right = self[BTREE_RIGHT];
+    float offs = 0;
+    if(left){
+        offs = btree_to_linarray(left, pbuff);
+        buffI += offs;
+        pbuff += offs;
+    }
+    pbuff[0] = key;
+    pbuff[1] = val;
+    buffI += 2;
+    pbuff += 2;
+    if(right){
+        offs = btree_to_linarray(right, pbuff);
+        buffI += offs;
+        pbuff += offs;
+    }                                               trace_exit("btree_to_linarray");
+    return buffI;
+}
+
+
+
+float btree_rebalance_split(float self, float buff, float count){ trace_enter("btree_rebalance_split");
+    assert_type(self, typeof_btree);
+    float count_mid = floor(count / 2);
+    float buff_mid = buff + count_mid * 2;
+    float key = buff[2*count_mid];
+    float val = buff[2*count_mid+1];
+    self[BTREE_KEY] = key;
+    self[BTREE_VAL] = val;
+    //printf("split(%d)<-[%d:%d]\n", count, key, val);
+                                                                    //trace("1");
+    if(count_mid > 0){
+        float buff_left = buff;
+        float count_left = count_mid-1;
+        float left = new_btree_internal();                          //trace("2");
+        btree_rebalance_split(left, buff_left, count_left);
+        self[BTREE_LEFT] = left;                                    //trace("3");
+    }
+    if(count > count_left){
+        float count_right = count - count_mid;
+        float buff_right = buff + (count_mid+1)*2;
+        float right = new_btree_internal();                         //trace("4");
+        btree_rebalance_split(right, buff_right, count_right);
+        self[BTREE_RIGHT] = right;                                  //trace("5");
+    }                                                               
+                                                                    //trace("6");
+                                                                    trace_exit("btree_rebalance_split");
+}
+
+float btree_rebalance_split2(float self, float buff, float idx_from, float idx_to, float indent){
+    assert_type(self, typeof_btree);
+    float count = idx_to-idx_from+1;
+    float idx_mid = floor(idx_from + count/2);
+    float key = buff[2*idx_mid];
+    float val = buff[2*idx_mid+1];
+    self[BTREE_KEY] = key;
+    self[BTREE_VAL] = val;
+    self[BTREE_LEFT] = 0;
+    self[BTREE_RIGHT] = 0;
+    //printf("%isplit(%d..%d)<-[%d:%d]\n", indent, idx_from, idx_to, key, val);
+    /// gordon doesn't need to hear all this, he's a highly trained professional 
+    indent++;
+    if(idx_from < idx_mid){
+        float left = new_btree_internal();
+        btree_rebalance_split2(left, buff, idx_from, idx_mid-1, indent);
+        self[BTREE_LEFT] = left;    
+    }
+    if(idx_to > idx_mid){
+        float right = new_btree_internal();
+        btree_rebalance_split2(right, buff, idx_mid+1, idx_to, indent);
+        self[BTREE_RIGHT] = right;    
+    }
+}
+
+float btree_destructor(float self){         trace_enter("btree_destructor");
+    assert_type(self, typeof_btree);
+    float left = self[BTREE_LEFT];
+    float right = self[BTREE_RIGHT];
+    if(left){
+        btree_destructor(left);
+        ba_free(left);
+        left = 0;
+    }
+    if(right){
+        btree_destructor(right);
+        ba_free(right);
+        right = 0;
+    }                                       trace_exit("btree_destructor");
+}
+
+/// returns the depth of the deepest link
+float btree_depth(float self){
+    assert_type(self, typeof_btree);
+    float depth = 0;
+    float left = self[BTREE_LEFT];
+    float right = self[BTREE_RIGHT];
+    if(left){
+        float depth_left = 1 + btree_depth(left);
+        if(depth_left > depth){depth = depth_left;}
+    }
+    if(right){
+        float depth_right = 1 + btree_depth(right);
+        if(depth_right > depth){depth = depth_right;}
+    }
+    return depth;
+}
+
+/// rebuilds the tree so it is balanced
+float btree_rebalance(float self){               trace_enter("btree_rebalance");
+    assert_type(self, typeof_btree);             //trace("1");
+    float count = btree_size(self);              //trace("2");
+    float linarr = stack_alloc(count*2);         //trace("3");
+    btree_to_linarray(self, linarr);             //trace("4");
+                                                
+    btree_destructor(self);                          //trace("5");
+    //btree_rebalance_split(self, linarr, count);  //trace("6");
+    float idx_from = 0; 
+    float idx_to = count-1; 
+    float indent = 0;
+    btree_rebalance_split2(self, linarr, idx_from, idx_to, indent);
+                                                 trace_exit("btree_rebalance");
+}
+
+float btree_print_linarray(float self){         trace_enter("btree_print_linarray");
+    assert_type(self, typeof_btree);
+    float count = btree_size(self);
+    float linarr = stack_alloc(count*2);
+    btree_to_linarray(self, linarr);
+    printf("linarr (count %d):\n", count);
+    
+    float I;
+    for(I = 0; I < count; I++){
+        float key = linarr[2*I];
+        float val = linarr[2*I+1];
+        printf("%d: [%d:%d]\n", I, key, val);
+    }                                           trace_exit("btree_print_linarray");
+}
+
+float btree_print(float self){                  trace_enter("btree_print");
+    btree_print_helper(self, 0);                trace_exit("btree_print");
+}
+
+float btree_print_helper(float self, float indent){   trace_enter("btree_print_helper");
+    assert_type(self, typeof_btree);
+    float key = self[BTREE_KEY];
+    float val = self[BTREE_VAL];
+    float left = self[BTREE_LEFT];
+    float right = self[BTREE_RIGHT];
+    printf("%i%d:%d\n", indent, key, val);
+    indent++;
+    if(left) {btree_print_helper(left, indent);}
+    if(right){btree_print_helper(right, indent);}     trace_exit("btree_print_helper");
+}
+
+float btree_delete(float self){   trace_enter("btree_delete");
+    btree_destructor(self);
+    free(self);                   trace_exit("btree_delete");
+}
+
+#endif
+

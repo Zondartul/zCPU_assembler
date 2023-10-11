@@ -1,0 +1,715 @@
+     0 mov ECX,0
+// main(...)
+     3 call 1019
+     6 jmp EAX
+str_1:
+     8 db "Hello World!",0
+AdrScr:
+    21 db 65536
+ScrI:
+    22 db 0
+AdrDisk:
+    23 db 69536
+AdrKb:
+    24 db 73536
+BuffI:
+    25 db 0
+WriteC:
+// WriteC(C)
+    26 enter -0
+__1:
+__3:
+    29 mov EAX,4000
+    32 sub EAX,#25
+    35 fsgn EAX,EAX
+    37 max EAX,0
+// if (BuffI<4000)
+    40 cmp 0,EAX
+    43 jge 70
+    46 rstack EAX,EBP:2
+    50 mov EBX,#25
+    53 add EBX,1348
+// Buff[BuffI]=C
+    56 mov #EBX,EAX
+// BuffI++
+    58 inc #25
+    61 mov EAX,#25
+    64 add EAX,1348
+// Buff[BuffI]=0
+    67 mov #EAX,0
+__4:
+__2:
+__0:
+    70 leave 
+    71 ret 
+EraseC:
+// EraseC()
+    72 enter -0
+__6:
+// BuffI--
+    75 dec #25
+    78 mov EAX,#25
+    81 add EAX,1348
+// Buff[BuffI]=0
+    84 mov #EAX,0
+__5:
+    87 leave 
+    88 ret 
+hasKb:
+// hasKb()
+    89 enter -0
+__8:
+__10:
+    92 mov EAX,0
+    95 add EAX,#24
+    98 mov EBX,0
+   101 sub EBX,#EAX
+   103 fabs EBX,EBX
+   105 fsgn EBX,EBX
+// if (AdrKb[0]!=0)
+   107 cmp 0,EBX
+   110 jge 121
+   113 mov EAX,1
+   116 leave 
+   117 ret 
+   118 jmp 126
+__12:
+__11:
+__14:
+   121 mov EAX,0
+   124 leave 
+   125 ret 
+__13:
+__9:
+__7:
+   126 leave 
+   127 ret 
+getKb:
+// getKb()
+   128 enter 1
+__16:
+   131 mov EAX,1
+   134 add EAX,#24
+   137 sstack EBP:-1,#EAX
+   141 mov EAX,0
+   144 add EAX,#24
+// AdrKb[0]=1
+   147 mov #EAX,1
+   150 rstack EAX,EBP:-1
+   154 leave 
+   155 ret 
+__15:
+   156 leave 
+   157 ret 
+PrintC:
+// PrintC(C)
+   158 enter -0
+__18:
+   161 rstack EAX,EBP:2
+   165 mov EBX,2
+   168 mul EBX,#22
+   171 add EBX,#21
+// AdrScr[2*ScrI]=C
+   174 mov #EBX,EAX
+   176 mov EAX,2
+   179 mul EAX,#22
+   182 add EAX,1
+   185 add EAX,#21
+// AdrScr[2*ScrI+1]=999
+   188 mov #EAX,999
+// ScrI++
+   191 inc #22
+__17:
+   194 leave 
+   195 ret 
+PrintS:
+// PrintS(S)
+   196 enter 1
+__20:
+   199 sstack EBP:-1,0
+__22:
+   204 rstack EAX,EBP:-1
+   208 rstack EBX,EBP:2
+   212 add EBX,EAX
+   214 mov EAX,EBX
+   216 mov EBX,0
+   219 sub EBX,#EAX
+   221 fabs EBX,EBX
+   223 fsgn EBX,EBX
+// if (S[I]!=0
+   225 cmp 0,EBX
+   228 jz 267
+   231 rstack EAX,EBP:-1
+   235 rstack EBX,EBP:2
+   239 add EBX,EAX
+   241 mov EAX,EBX
+// PrintC arg #1 (float C)
+   243 push #EAX
+   245 mov ECX,1
+// PrintC(...)
+   248 call 158
+   251 add ESP,1
+   254 rstack EAX,EBP:-1
+// I++
+   258 inc EAX
+   260 sstack EBP:-1,EAX
+   264 jmp 204
+__21:
+__19:
+   267 leave 
+   268 ret 
+Backspace:
+// Backspace()
+   269 enter -0
+__24:
+// ScrI--
+   272 dec #22
+// PrintC arg #1 (float C)
+   275 push 32
+   278 mov ECX,1
+// PrintC(...)
+   281 call 158
+   284 add ESP,1
+// ScrI--
+   287 dec #22
+__23:
+   290 leave 
+   291 ret 
+Newline:
+// Newline()
+   292 enter 1
+__26:
+   295 mov EAX,#22
+   298 mod EAX,30
+   301 sstack EBP:-1,EAX
+   305 rstack EAX,EBP:-1
+   309 neg EAX
+   311 mov EBX,EAX
+   313 add EBX,30
+   316 mov EAX,#22
+   319 add EAX,EBX
+// ScrI=ScrI-col+30
+   321 mov #22,EAX
+__25:
+   324 leave 
+   325 ret 
+Print:
+// Print(S)
+   326 enter 2
+__28:
+   329 sstack EBP:-1,0
+__30:
+   334 rstack EAX,EBP:-1
+   338 rstack EBX,EBP:2
+   342 add EBX,EAX
+   344 mov EAX,EBX
+   346 mov EBX,0
+   349 sub EBX,#EAX
+   351 fabs EBX,EBX
+   353 fsgn EBX,EBX
+// if (S[I]!=0
+   355 cmp 0,EBX
+   358 jz 435
+   361 rstack EAX,EBP:-1
+   365 rstack EBX,EBP:2
+   369 add EBX,EAX
+   371 mov EAX,EBX
+   373 sstack EBP:-2,#EAX
+__32:
+   377 rstack EAX,EBP:-2
+   381 mov EBX,10
+   384 sub EBX,EAX
+   386 fabs EBX,EBX
+   388 fsgn EBX,EBX
+   390 lneg EBX
+// if (C=='\10')
+   392 cmp 0,EBX
+   395 jge 407
+   398 mov ECX,0
+// Newline(...)
+   401 call 292
+   404 jmp 422
+__34:
+__33:
+__36:
+   407 rstack EAX,EBP:-2
+// PrintC arg #1 (float C)
+   411 push EAX
+   413 mov ECX,1
+// PrintC(...)
+   416 call 158
+   419 add ESP,1
+__35:
+__31:
+   422 rstack EAX,EBP:-1
+// I++
+   426 inc EAX
+   428 sstack EBP:-1,EAX
+   432 jmp 334
+__29:
+__27:
+   435 leave 
+   436 ret 
+Help:
+// Help()
+   437 enter -0
+__38:
+   440 mov ECX,0
+// Newline(...)
+   443 call 292
+// PrintS arg #1 (float S)
+   446 push 466
+   449 mov ECX,1
+// PrintS(...)
+   452 call 196
+   455 add ESP,1
+   458 mov ECX,0
+// Newline(...)
+   461 call 292
+__37:
+   464 leave 
+   465 ret 
+__39:
+   466 db "F1 - help, F2 - save, F3 - load, F4 - run, F5 - clear",0
+Save:
+// Save()
+   520 enter 1
+__41:
+   523 mov ECX,0
+// Newline(...)
+   526 call 292
+// PrintS arg #1 (float S)
+   529 push 651
+   532 mov ECX,1
+// PrintS(...)
+   535 call 196
+   538 add ESP,1
+   541 mov EAX,0
+   544 add EAX,#23
+// AdrDisk[0]=BuffI
+   547 mov #EAX,#25
+   550 sstack EBP:-1,0
+__44:
+   555 rstack EAX,EBP:-1
+   559 mov EBX,#25
+   562 sub EBX,EAX
+   564 fsgn EBX,EBX
+   566 inc EBX
+   568 max EBX,0
+// if (I<=BuffI
+   571 cmp 0,EBX
+   574 jz 613
+   577 rstack EAX,EBP:-1
+   581 add EAX,1348
+   584 mov EBX,EAX
+   586 rstack EAX,EBP:-1
+   590 add EAX,1
+   593 mov ECX,EAX
+   595 add ECX,#23
+// AdrDisk[I+1]=Buff[I]
+   598 mov #ECX,#EBX
+   600 rstack EAX,EBP:-1
+// I++
+   604 inc EAX
+   606 sstack EBP:-1,EAX
+   610 jmp 555
+__43:
+   613 rstack EAX,EBP:-1
+   617 add EAX,#23
+   620 mov EBX,EAX
+// AdrDisk[I]=0
+   622 mov #EBX,0
+// PrintS arg #1 (float S)
+   625 push 645
+   628 mov ECX,1
+// PrintS(...)
+   631 call 196
+   634 add ESP,1
+   637 mov ECX,0
+// Newline(...)
+   640 call 292
+__40:
+   643 leave 
+   644 ret 
+__45:
+   645 db "done.",0
+__42:
+   651 db "Save...",0
+Load:
+// Load()
+   659 enter 1
+__47:
+   662 mov ECX,0
+// Newline(...)
+   665 call 292
+// PrintS arg #1 (float S)
+   668 push 784
+   671 mov ECX,1
+// PrintS(...)
+   674 call 196
+   677 add ESP,1
+   680 mov EAX,0
+   683 add EAX,#23
+// BuffI=AdrDisk[0]
+   686 mov #25,#EAX
+   689 sstack EBP:-1,0
+__50:
+   694 rstack EAX,EBP:-1
+   698 mov EBX,#25
+   701 sub EBX,EAX
+   703 fsgn EBX,EBX
+   705 inc EBX
+   707 max EBX,0
+// if (I<=BuffI
+   710 cmp 0,EBX
+   713 jz 752
+   716 rstack EAX,EBP:-1
+   720 add EAX,1
+   723 mov EBX,EAX
+   725 add EBX,#23
+   728 rstack EAX,EBP:-1
+   732 add EAX,1348
+   735 mov ECX,EAX
+// Buff[I]=AdrDisk[I+1]
+   737 mov #ECX,#EBX
+   739 rstack EAX,EBP:-1
+// I++
+   743 inc EAX
+   745 sstack EBP:-1,EAX
+   749 jmp 694
+__49:
+// PrintS arg #1 (float S)
+   752 push 645
+   755 mov ECX,1
+// PrintS(...)
+   758 call 196
+   761 add ESP,1
+   764 mov ECX,0
+// Newline(...)
+   767 call 292
+// Print arg #1 (float S)
+   770 push 1348
+   773 mov ECX,1
+// Print(...)
+   776 call 326
+   779 add ESP,1
+__46:
+   782 leave 
+   783 ret 
+__48:
+   784 db "Load...",0
+Run:
+// Run()
+   792 enter -0
+__52:
+   795 mov ECX,0
+// Newline(...)
+   798 call 292
+// PrintS arg #1 (float S)
+   801 push 821
+   804 mov ECX,1
+// PrintS(...)
+   807 call 196
+   810 add ESP,1
+   813 mov ECX,0
+// Newline(...)
+   816 call 292
+__51:
+   819 leave 
+   820 ret 
+__53:
+   821 db "Run",0
+Clear:
+// Clear()
+   825 enter 2
+__55:
+// BuffI=0
+   828 mov #25,0
+// ScrI=0
+   832 mov #22,0
+   836 sstack EBP:-1,0
+// init loop
+   841 sstack EBP:-1,0
+__57:
+   846 rstack EAX,EBP:-1
+   850 mov EBX,18
+   853 sub EBX,EAX
+   855 fsgn EBX,EBX
+// condition
+   857 max EBX,0
+   860 cmp 0,EBX
+   863 jz 897
+// PrintC arg #1 (float C)
+   866 push 46
+   869 mov ECX,1
+// PrintC(...)
+   872 call 158
+   875 add ESP,1
+   878 mov ECX,0
+// Newline(...)
+   881 call 292
+   884 rstack EAX,EBP:-1
+// loop step
+   888 inc EAX
+   890 sstack EBP:-1,EAX
+   894 jmp 846
+__56:
+// ScrI=0
+   897 mov #22,0
+// init loop
+   901 sstack EBP:-1,0
+__59:
+   906 rstack EAX,EBP:-1
+   910 mov EBX,18
+   913 sub EBX,EAX
+   915 fsgn EBX,EBX
+// condition
+   917 max EBX,0
+   920 cmp 0,EBX
+   923 jz 994
+   926 sstack EBP:-2,0
+// init loop
+   931 sstack EBP:-2,0
+__61:
+   936 rstack EAX,EBP:-2
+   940 mov EBX,30
+   943 sub EBX,EAX
+   945 fsgn EBX,EBX
+// condition
+   947 max EBX,0
+   950 cmp 0,EBX
+   953 jz 981
+// PrintC arg #1 (float C)
+   956 push 32
+   959 mov ECX,1
+// PrintC(...)
+   962 call 158
+   965 add ESP,1
+   968 rstack EAX,EBP:-2
+// loop step
+   972 inc EAX
+   974 sstack EBP:-2,EAX
+   978 jmp 936
+__60:
+   981 rstack EAX,EBP:-1
+// loop step
+   985 inc EAX
+   987 sstack EBP:-1,EAX
+   991 jmp 906
+__58:
+// ScrI=0
+   994 mov #22,0
+// PrintS arg #1 (float S)
+   998 push 1012
+  1001 mov ECX,1
+// PrintS(...)
+  1004 call 196
+  1007 add ESP,1
+__54:
+  1010 leave 
+  1011 ret 
+__62:
+  1012 db "Clear.",0
+main:
+// main()
+  1019 enter 1
+__64:
+// PrintS arg #1 (float S)
+  1022 push 8
+  1025 mov ECX,1
+// PrintS(...)
+  1028 call 196
+  1031 add ESP,1
+__66:
+// if (1
+  1034 cmp 0,1
+  1038 jz 1335
+__68:
+  1041 mov ECX,0
+// hasKb(...)
+  1044 call 89
+  1047 mov EBX,1
+  1050 sub EBX,EAX
+  1052 fabs EBX,EBX
+  1054 fsgn EBX,EBX
+  1056 lneg EBX
+// if (hasKb()==1)
+  1058 cmp 0,EBX
+  1061 jge 1332
+  1064 mov ECX,0
+// getKb(...)
+  1067 call 128
+  1070 sstack EBP:-1,EAX
+__71:
+  1074 rstack EAX,EBP:-1
+  1078 mov EBX,127
+  1081 sub EBX,EAX
+  1083 fabs EBX,EBX
+  1085 fsgn EBX,EBX
+  1087 lneg EBX
+// if (K==127)
+  1089 cmp 0,EBX
+  1092 jge 1110
+  1095 mov ECX,0
+// EraseC(...)
+  1098 call 72
+  1101 mov ECX,0
+// Backspace(...)
+  1104 call 269
+  1107 jmp 1332
+__73:
+__72:
+__75:
+__77:
+  1110 rstack EAX,EBP:-1
+  1114 mov EBX,10
+  1117 sub EBX,EAX
+  1119 fabs EBX,EBX
+  1121 fsgn EBX,EBX
+  1123 lneg EBX
+// if (K==10)
+  1125 cmp 0,EBX
+  1128 jge 1152
+// WriteC arg #1 (float C)
+  1131 push 10
+  1134 mov ECX,1
+// WriteC(...)
+  1137 call 26
+  1140 add ESP,1
+  1143 mov ECX,0
+// Newline(...)
+  1146 call 292
+  1149 jmp 1332
+__79:
+__78:
+__81:
+__83:
+  1152 rstack EAX,EBP:-1
+  1156 mov EBX,163
+  1159 sub EBX,EAX
+  1161 fabs EBX,EBX
+  1163 fsgn EBX,EBX
+  1165 lneg EBX
+// if (K==163)
+  1167 cmp 0,EBX
+  1170 jge 1182
+  1173 mov ECX,0
+// Help(...)
+  1176 call 437
+  1179 jmp 1332
+__85:
+__84:
+__87:
+__89:
+  1182 rstack EAX,EBP:-1
+  1186 mov EBX,164
+  1189 sub EBX,EAX
+  1191 fabs EBX,EBX
+  1193 fsgn EBX,EBX
+  1195 lneg EBX
+// if (K==164)
+  1197 cmp 0,EBX
+  1200 jge 1212
+  1203 mov ECX,0
+// Save(...)
+  1206 call 520
+  1209 jmp 1332
+__91:
+__90:
+__93:
+__95:
+  1212 rstack EAX,EBP:-1
+  1216 mov EBX,165
+  1219 sub EBX,EAX
+  1221 fabs EBX,EBX
+  1223 fsgn EBX,EBX
+  1225 lneg EBX
+// if (K==165)
+  1227 cmp 0,EBX
+  1230 jge 1242
+  1233 mov ECX,0
+// Load(...)
+  1236 call 659
+  1239 jmp 1332
+__97:
+__96:
+__99:
+__101:
+  1242 rstack EAX,EBP:-1
+  1246 mov EBX,166
+  1249 sub EBX,EAX
+  1251 fabs EBX,EBX
+  1253 fsgn EBX,EBX
+  1255 lneg EBX
+// if (K==166)
+  1257 cmp 0,EBX
+  1260 jge 1272
+  1263 mov ECX,0
+// Run(...)
+  1266 call 792
+  1269 jmp 1332
+__103:
+__102:
+__105:
+__107:
+  1272 rstack EAX,EBP:-1
+  1276 mov EBX,167
+  1279 sub EBX,EAX
+  1281 fabs EBX,EBX
+  1283 fsgn EBX,EBX
+  1285 lneg EBX
+// if (K==167)
+  1287 cmp 0,EBX
+  1290 jge 1302
+  1293 mov ECX,0
+// Clear(...)
+  1296 call 825
+  1299 jmp 1332
+__109:
+__108:
+__111:
+  1302 rstack EAX,EBP:-1
+// WriteC arg #1 (float C)
+  1306 push EAX
+  1308 mov ECX,1
+// WriteC(...)
+  1311 call 26
+  1314 add ESP,1
+  1317 rstack EAX,EBP:-1
+// PrintC arg #1 (float C)
+  1321 push EAX
+  1323 mov ECX,1
+// PrintC(...)
+  1326 call 158
+  1329 add ESP,1
+__110:
+__106:
+__104:
+__100:
+__98:
+__94:
+__92:
+__88:
+__86:
+__82:
+__80:
+__76:
+__74:
+__70:
+__69:
+__67:
+  1332 jmp 1034
+__65:
+__113:
+// if (1
+  1335 cmp 0,1
+  1339 jz 1346
+  1342 nop 
+  1343 jmp 1335
+__112:
+__63:
+  1346 leave 
+  1347 ret 
+Buff:
+  1348 alloc 4000
+  5348 db 0

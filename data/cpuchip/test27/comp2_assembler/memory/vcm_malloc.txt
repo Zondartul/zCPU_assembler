@@ -1,0 +1,84 @@
+/// WIP vector malloc
+
+/// we need a malloc that is really good at expanding stuff
+/// idea: every alloc is external-metadata reserved-capacity vector
+/// i.e. we have chunks of various sizes and we alloc 1 of those chunks
+/// and keep track of how much memory is used vs available in the chunk
+/// small reallocs keep within chunk
+/// big reallocs move to the next chunk over.
+/// the info on chunks is kept separate from chunks themselves.
+
+/// vector-malloc:
+/// vcm_chunk_info{
+///   0: typeof_vcm_chunk_info
+///   1: ptr
+///   2: size_used
+///   3: capacity
+
+typeof_chunk_info: db "vcm_chunk_info", 0;
+
+float construct_chunk_info(float p){
+    p[0] = typeof_chunk_info;
+    p[1] = 0;
+    p[2] = 0;
+    p[3] = 0;
+}
+
+float chunk_info_set_ptr(float self, float ptr){self[1] = ptr;}
+float chunk_info_set_size(float self, float size){self[2] = size;}
+float chunk_info_set_cap(float self, float cap){self[3] = cap;}
+
+
+typeof_head: db "vcm_head", 0;
+/// vcm_head{
+///   0: typeof_vcm_head
+////  -- disc info --
+///   1: disk_addr
+///   2: disc_size /// = 32k (example)
+//    -- map info --- /// map has chunk metadata
+///   3: map_addr
+///   4: map_size
+///   5: map_n_chunks
+//    --- allocation geometry ---
+///   6: size_min
+///   7: size_max
+///   8: grow_factor = 2 /// allocations expand by 2x
+///   9: channel_factor = 8 = log2(max_size) - log2(min_size) + 2 ///(when grow factor = 2)
+///  10: channel_size = 8k = max_size * channel_factor
+///  11: n_channels = 4 = floor(disc_size / channel_size)
+/// }
+
+
+
+float constructor_vcm_head(float self, float disc_addr, float disc_size, float map_addr, float map_size, float map_n_chunks){
+    self[0] = typeof_vcm_head;
+    self[1] = disc_addr;
+    self[2] = disc_size;
+    self[3] = map_addr;
+    self[4] = map_size;
+    self[5] = map_n_chunks;
+}
+
+float vcm_head_addr = 0;
+
+float malloc_init(float disk, float size){
+    float size_min = 16;
+    float size_max = 1024;
+    /// 1. take the disc size and half it
+    /// 2. divide the second half into max-size chunks
+    /// 3. set max-size to half of itself
+    /// 4. set disc to the first half of itself
+    
+    /// so we get 1024, 2*512, 4*256, 8*128, 16*64, 32*32, 64*16
+    //           = 7*1024 bytes total
+    //  how many entries? 128 = 4*128 bytes of map = 512 bytes for map
+    //  so we need to divide the disc into 8 parts 
+    //  the formula appears to be (lb(1024) - lb(16) + 2)
+    //
+    float channel_size = 8*size_max;
+    float n_channels = size / channel_size; /// how many copies of the biggest alloc fit?
+    fint n_channels; 
+    
+    
+}
+

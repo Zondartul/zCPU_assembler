@@ -1,0 +1,141 @@
+/// simple malloc
+
+/// alloc header:
+/// 0 - size_used
+
+/// calculate_malloc_geometry - utility to figure out
+/// how to split a disc into a map and the main memory.
+/// the map contains allocation headers where each
+/// describes an allocation in the main memory.
+/// 
+/// params: res - pointer to output buffer[5]
+///         params_in - pointer to input buffer[4]
+float calculate_malloc_geometry(float res, float params_in){
+    float disc_addr = params_in[0];
+    float disc_size = params_in[1];
+    float alloc_size = params_in[2];
+    float header_size = params_in[3];
+    
+    float map_ptr = disc_addr;
+    float n_allocs = disc_size / alloc_size;
+    fint n_allocs;
+    float map_size = n_allocs * header_size;
+    
+    disc_size -= map_size;
+    float disc_ptr = disc_addr + map_size;
+    
+    n_allocs = disc_size / alloc_size;
+    fint n_allocs;
+    
+    res[0] = disc_ptr;
+    res[1] = disc_size;
+    res[2] = map_ptr;
+    res[3] = map_size;
+    res[4] = n_allocs;
+}
+
+/// simple malloc with const-size allocations
+sm_malloc_head:
+float sm_disc_ptr = 0;
+float sm_disc_size = 0;
+float sm_map_ptr = 0;
+float sm_map_size = 0;
+float sm_n_allocs = 0;
+float sm_alloc_size = 0;
+float sm_header_size = 0;
+float sm_used_allocs = 0;
+
+tmp_buff: alloc 10;
+
+/// note that we are not allocating the header so the map entry is the header, not ptr to header
+
+float sm_malloc_init(float disc_addr, float disc_size){
+    sm_alloc_size = 300;
+    sm_header_size = 1;
+    tmp_buff[0] = disc_addr;
+    tmp_buff[1] = disc_size;
+    tmp_buff[2] = sm_alloc_size;
+    tmp_buff[3] = sm_header_size;
+    calculate_malloc_geometry(sm_malloc_head, tmp_buff);
+    
+    float I = 0;
+    for(I = 0; I < sm_n_allocs; I++){
+        sm_free_I(I);
+    }   
+}
+
+float sm_malloc(float size){
+    if(sm_alloc_size == 0){sm_error_not_initialized(); return 0;}
+    if(size > sm_alloc_size){sm_error_alloc_too_big(size); return 0;}
+    
+    float I = 0;
+    for(I = 0; I < sm_n_allocs; I++){
+        float header = sm_map_ptr[I];
+        if(header == 0){
+            header = size;
+            sm_map_ptr[I] = header;
+            float addr = sm_disc_ptr + sm_alloc_size * I;
+            
+            sm_used_allocs++;
+            //printf("malloc %d / %d\n", sm_used_allocs, sm_n_allocs);
+            return addr;
+        }
+    }
+    sm_error_out_of_mem(); return 0;
+}
+
+float sm_zero_chunk(float I){
+    float addr = sm_disc_ptr + sm_alloc_size * I;
+    memset(addr, '\0', sm_alloc_size);
+}
+
+float sm_free_I(float I){
+    float header = sm_map_ptr[I];
+    header = 0;
+    sm_map_ptr[I] = header;
+    //sm_zero_chunk(I); /// cool but slow
+    return 1;  
+}
+
+float sm_calc_I(float p){
+    float I = (p - sm_disc_ptr)/sm_alloc_size;
+    fint I;
+    return I;
+}
+
+float sm_free(float p){
+    if(p == 0){sm_error_nullptr(); return 0;} /// error, null-ptr
+    float I = sm_calc_I(p);    
+    float header = sm_map_ptr[I];
+    if(header == 0){sm_error_double_free(); return 0;} /// error, double-free
+    header = 0;
+    sm_map_ptr[I] = header;
+    sm_used_allocs--;
+    return 1;  
+}
+
+float sm_realloc(float p, float size){
+    //printf("realloc (%d, %d)\n", p, size);
+    if(size > sm_alloc_size){sm_error_alloc_too_big(size); return 0;} /// error, alloc too big
+    if(size == 0){sm_error_resize_to_zero(); return 0;} /// error, resize to 0 size
+    if(p == 0){sm_error_nullptr(); return 0;} /// error, null-ptr
+    float I = sm_calc_I(p);
+    float header = sm_map_ptr[I];
+    if(header == 0){sm_error_not_yours(); return 0;} /// error, this is not yours
+    header = size;
+    sm_map_ptr[I] = header;
+    return p;
+}
+
+//float infloop(){printf("HALT(sm_malloc.txt)\n"); while(1){};}
+
+float sm_error_not_initialized(){ErrorTrace("malloc error: malloc is not intialized.\n");}
+float sm_error_alloc_too_big(float size){ErrorTrace("malloc error: alloc too big (%d > %d).\n", size, sm_alloc_size);}
+float sm_error_resize_to_zero(){ErrorTrace("malloc error: resize to zero.\n");}
+float sm_error_nullptr()      {ErrorTrace("malloc error: p is nullptr.\n");}
+float sm_error_not_yours()    {ErrorTrace("\nmalloc error: p is not yours.\n");}
+float sm_error_double_free()  {ErrorTrace("\nmalloc error: double-free.\n");}
+float sm_error_out_of_mem()   {
+    ErrorTrace("malloc error: out of memory\nallocs: %d out of %d\n", sm_used_allocs, sm_n_allocs);
+}
+/// ------- end simple malloc -------------------------

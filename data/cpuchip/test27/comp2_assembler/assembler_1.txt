@@ -1,0 +1,201 @@
+/// assembler
+/// takes code text from buffer
+/// writes machine code back to buffer
+
+/// note on INCLUDE: all includes should be relative to the main file which is this one.
+/// includes can only be compiled individually when they are in root folder, else rel paths will differ
+
+mov ss, StackLimit  /// set our stack to not overlap with
+mov esp, 65536      /// general RAM, so we can detect 
+sub esp, StackLimit /// underflows (when we run out of stack space)
+
+if(first){
+    first = 0;
+    jmp main();
+}else{
+    ErrorTrace("CPU reset error");
+}
+float first = 1;
+
+//float AdrScr  = 65536;
+//float AdrDisk = 69536;
+//float AdrKb   = 73536;
+float AdrKb     =  65536;
+float AdrScr    =  66000;
+float AdrDisk   =  69000;
+float AdrDisk2  =  89000;
+float AdrDisk3  = 109000;
+float DiskSize  =  20000;
+float DiskSize2 =  20000;
+float DiskSize3 =  20000;
+//float DiskI = 0;
+//float BumpAllocI = 0;
+float stdin_disk = 0;
+float stdin_disk2 = 0;
+float stdout_disk3 = 0;
+//float putch = 0; /// API for output
+//float getch = 0; /// API for input
+//float hasch = 0;
+
+//#include "simple_keyboard.txt"
+
+//float BumpAlloc(float n){
+//    float p = Heap + BumpAllocI;
+//    BumpAllocI += n;
+//    return p;    
+//}
+
+
+
+/// next idea: make streams that can accept and provide characters
+/// and handle size by themselves
+
+/// ------- choice of malloc implementation ------
+#include "memory/sm_malloc.txt"
+#include "memory/ba_malloc.txt"
+float malloc(float size){return sm_malloc(size);}
+float realloc(float p, float size){return sm_realloc(p, size);}
+float free(float p){return sm_free(p);}
+/// ----------------------------------------------
+
+/// ideas:
+///  for tokenizing, make a mini-regex that can specify ranges
+///
+/// mini-regex like in tiny-regex-c
+/// 1. read format string one char at a time
+/// 2. keep track of: current pos, num single-token successes, overal pass-fail-maybe
+/// 3. record current position in format, set overal to maybe
+/// 4. if normal char, try to match it
+/// 5. if see any of: . ^ $ \s \S \w \W \d \D - try to match that char
+/// 6. if see [ - read pattern, then match a single char against it
+/// 7. if see * + ? - record the number of successes so far and 
+///     jmp back to saved position and go to 2.
+/// 8. if see | and overal==fail, set overal=maybe and clear the captured string
+/// 9. if see (, extract internal format into a separate regex and run that as a token
+///10. after cur tok processed, move to next char in format
+///11. after entire format parsed and overal==pass, return parsed string
+///12. if overal==fail, return null
+
+/// idea 2:
+/// external malloc viewer (alloc 1: size 15: [ abcd\0 ])
+/// would be cool if it was a module accessed through rpc but eh
+#include "devices/simple_port.txt"
+#include "strings/simple_printf.txt"
+//#include "devices/simple_screen.txt"
+
+#include "streams/simple_stream.txt"
+
+
+#include "streams/stream_screen.txt"
+#include "streams/stream_keyboard.txt"
+#include "streams/stream_disk.txt"
+#include "lobj/LString2.txt"
+
+
+#include "util/debug.txt"
+#include "asm/prog_assembler.txt"
+
+// TODO:
+//      - compare two the RM calc functions and assert they are the same
+//      - compare with binary listing to ensure the emitted code is correct
+//      - make sure every line is classified, none are _NONE
+//      - make a label tabel
+//
+
+
+float main(){   //trace_enter("main");
+    trace_init();
+    trace_enter("main");
+    sign_all();
+    
+    float stdout_screen = stack_alloc(10); make_screen_stream_out(stdout_screen, AdrScr);
+    cur_stream_out = stdout_screen;
+    
+    float stdin_kb = stack_alloc(10); make_keyboard_stream_in(stdin_kb, AdrKb);
+    cur_stream_in = stdin_kb;
+    
+    printf("Assembler\n"); //PrintS("Assembler"); Newline();  
+    sign_none();
+    
+    
+    sign_yellow();
+    printf("hello world! I got %d problems but %s aint one.\n", 99, "mango");
+    
+    sm_malloc_init(Heap, 8000);//16000);
+    bump_alloc_init(BumpHeap, 8000);
+    //float stack_size = N64k - StackLimit;
+    //setup_stack(StackLimit, stack_size);
+    query_stack();
+    /// ----------------- BEGIN SANITY ------------------
+    
+    //printf("test int %d, frac %d\n", 12, 123.456);
+    //test1();                                                                            //trace("main", 123);
+    //test2();
+    
+    stdin_disk = stack_alloc(10); make_disk_stream(stdin_disk, AdrDisk, DiskSize);  //trace("main", 124);
+    cur_stream_in = stdin_disk;                                                 //trace("main", 125);
+    fseek(stdin_disk, 1);
+                                                                                //trace("main", 126);
+                                                                                //trace("main", 127);
+    stdin_disk2 = stack_alloc(10); make_disk_stream(stdin_disk2, AdrDisk2, DiskSize2);
+    
+    stdout_disk3 = stack_alloc(10); make_disk_stream(stdout_disk3, AdrDisk3, DiskSize3);
+    //disk_access_test(AdrDisk2, stdin_disk2, 2012, 6);
+    //while(1){}
+    //printf("allocs: %d / %d\n", sm_used_allocs, sm_n_allocs);
+    assemble(stdin_disk, stdin_disk2, stdout_disk3);
+    
+    sign_green();                                                                                   //trace(__FILE__, 134);
+    
+    while(1){}  
+}
+
+float query_stack(){
+    float old_ss = -123;
+    float old_esz = -123;
+    float old_esp = -123;
+    mov old_ss, ss;
+    cpuget old_esz, 9;//mov old_esz, esz;
+    mov old_esp, esp;
+    printf("stack: ss %d, esz %d, esp %d\n", old_ss, old_esz, old_esp);        
+}
+
+float setup_stack(float adr, float size){
+    float old_ss = -123;
+    float old_esz = -123;
+    float old_esp = -123;
+    mov old_ss, ss;
+    cpuget old_esz, 9;//mov old_esz, esz;
+    mov old_esp, esp;
+    float new_ss = adr;
+    float new_esp = old_esp + old_ss - new_ss;
+    float new_esz = adr+size;
+    printf("old: ss %d, esz %d, esp %d\n", old_ss, old_esz, old_esp);
+    printf("new: ss %d, esz %d, esp %d\n", new_ss, new_esz, new_esp);
+    mov ss, new_ss;
+    cpuset 9, new_esz;//mov esz, new_esz;
+    mov esp, new_esp;
+    printf("stack setup\n");
+}
+
+float pdp_pos1 = 0;
+float pdp_pos2 = 0;
+float save_disk_pos(){
+    if(stdin_disk){pdp_pos1 = ftell(stdin_disk);}
+    if(stdin_disk2){pdp_pos2 = ftell(stdin_disk2);}
+}
+float set_disk_pos(float n1, float n2){
+    fseek(stdin_disk, n1);
+    fseek(stdin_disk2, n2);
+}
+
+float print_disk_pos(){
+    printf("%d:%d:", pdp_pos1, pdp_pos2);
+}
+
+Heap: alloc 8000; db 0;
+
+BumpHeap: alloc 8000; db 0;
+StackLimit: db 0;
+
+

@@ -1,0 +1,127 @@
+#ifndef SIMPLE_STREAM_GUARD
+#define SIMPLE_STREAM_GUARD
+/// simple_stream
+///
+/// a stream is a class that has methods to input or output single characters
+/// and also member vars for whatever internal state it needs to do that
+
+typeof_stream: db "Stream", 0;
+#define STREAM_TYPEOF 0
+#define STREAM_PUTCH 1
+#define STREAM_GETCH 2
+#define STREAM_HASCH 3
+#define STREAM_SEEK 4
+#define STREAM_TELL 5
+
+///------- stream io level 2 funcs ---------
+float cur_stream_out = 0;
+float cur_stream_in = 0;
+
+float fputch(float stream, float C){
+    float func_putch = stream[STREAM_PUTCH];
+    return func_putch(C, stream);
+}
+
+float Putch(float C){
+//    if(!cur_stream_out){return;}
+//    float func_putch = cur_stream_out[STREAM_PUTCH];
+//    return func_putch(C, cur_stream_out);
+    return fputch(cur_stream_out, C);
+}
+
+float fgetch(float stream){                 trace_enter("fgetch");
+    float func_getch = stream[STREAM_GETCH];
+    //printf("stream %d, func_getch %d, ", stream, func_getch); 
+    float res = func_getch(stream);         trace_exit("fgetch");
+    //printf("res %d\n", res);
+    return res;
+}
+
+float Getch(){                              trace_enter("Getch");
+    float res = fgetch(cur_stream_in);      trace_exit("Getch");
+    return  res;
+}
+
+float fhasch(float stream){
+    float func_hasch = stream[STREAM_HASCH];
+    return func_hasch(stream);
+}
+
+float Hasch(){                              trace_enter("Hasch");
+    float res = fhasch(cur_stream_in);      trace_exit("Hasch");
+    return res;
+}
+
+float fseek(float stream, float n){
+    float func_seek = stream[STREAM_SEEK];
+    return func_seek(n, stream)
+}
+
+float ftell(float stream){
+    float func_tell = stream[STREAM_TELL];
+    return func_tell(stream);
+}
+
+/// reads at most n-1 characters from stdin
+float getline_n(float buff, float n){  trace_enter("getline_n");
+    float buffI = 0;
+    float n1 = n-1;
+    while(buffI < n1){
+        float C = Getch();
+        if(C == '\n'){break;}
+        else{buff[buffI] = C;}
+        buffI++;
+    }
+    buff[buffI] = 0;                    trace_exit("getline_n");
+    return buff;
+}
+
+/// reads a line from stdin, returns num characters read
+float getline_unsafe(float buff){
+    float buffI = 0;
+    while(Hasch() == 1){
+        float C = Getch();
+        if(C == '\n'){break;}
+        else{buff[buffI] = C;}
+        buffI++;
+    }
+    buff[buffI] = 0;
+    return buffI;
+}
+
+float getline(float buff){
+    printf("Error: getline is deprecated, use getline_n\n");
+    printf("HALT(getline)\n");
+    while(1){}
+}
+
+/// puts a C string to stdout
+float putline(float S){
+    while(*S){Putch(*S++);}
+}
+
+float fread(float stream, float buff, float num){
+    float prev_cin = cur_stream_in;
+    cur_stream_in = stream;
+    float I;
+    for(I = 0; I < num; I++){
+        float C = fgetch(stream);//Getch();
+        buff[I] = C;
+    }   
+    cur_stream_in = prev_cin;
+}
+
+float fwrite(float stream, float buff, float num){
+    float prev_cout = cur_stream_out;
+    cur_stream_out = stream;
+    float I;
+    for(I = 0; I < num; I++){
+        float C = buff[I];
+        //Putch(C);
+        fputch(stream, C);
+    }
+    cur_stream_out = prev_cout;
+}
+
+#endif
+

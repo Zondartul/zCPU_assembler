@@ -1,0 +1,22 @@
+/// simple port
+
+float portOut(float portnum, float val){
+    out portnum, val;
+}
+
+#define PORT_GREEN 3
+#define PORT_YELLOW 4
+#define PORT_RED 5
+
+float sign_out(float g, float y, float b){
+    portOut(PORT_GREEN, g);
+    portOut(PORT_YELLOW, y);
+    portOut(PORT_RED, b);
+}
+
+float sign_all()   {sign_out(1,1,1);}
+float sign_none()  {sign_out(0,0,0);}
+float sign_green() {sign_out(1,0,0);}
+float sign_yellow(){sign_out(0,1,0);}
+float sign_red()   {sign_out(0,0,1);}
+

@@ -1,0 +1,99 @@
+#ifndef STREAM_SCREEN_GUARD
+#define STREAM_SCREEN_GUARD
+/// stream_screen
+#include "streams/simple_stream.txt"
+/// ---- screen stream ----
+
+#define SCR_WIDTH 30
+#define SCR_HEIGHT 18
+#define KEY_ENTER 10
+#define KEY_BACKSPACE 127
+
+/// stream:
+#define STREAM_SCREEN_ADR 6
+#define STREAM_SCREEN_I 7
+
+/// console screen:
+#define CS_SHIFT_ROW 2038
+#define CS_HIGH_SHIFT_ROW 2034
+#define CS_LOW_SHIFT_ROW 2033
+#define CS_HIGH_SHIFT_COL 2032
+#define CS_LOW_SHIFT_COL 2031
+///-------------- stuff to nom -------------
+
+float put_char_I(float adr, float scrI, float C){
+    adr[2*scrI] = C;
+    adr[2*scrI+1] = 999;
+}
+
+float put_char_stream(float stream, float C){
+    float adr = stream[STREAM_SCREEN_ADR];
+    float I = stream[STREAM_SCREEN_I];
+    put_char_I(adr, I, C);
+}
+
+float scr_Backspace(float stream){
+    stream[STREAM_SCREEN_I]--;
+    put_char_stream(stream, ' ');
+    // another I-- here?
+    //put_char_stream(stream, 'X');
+    //stream[STREAM_SCREEN_I]++;
+}
+
+float scr_CarriageReturn(float stream){
+    stream[STREAM_SCREEN_I] -= stream[STREAM_SCREEN_I] % SCR_WIDTH;
+}
+
+float scr_check_shift(float stream){
+    float scrI = stream[STREAM_SCREEN_I];
+    float maxI = (SCR_WIDTH * SCR_HEIGHT);
+    if(scrI >= maxI){
+        float col = scrI % SCR_WIDTH;
+        scrI = scrI - col - SCR_WIDTH;
+        stream[STREAM_SCREEN_I] = scrI;
+        float scr_adr = stream[STREAM_SCREEN_ADR];
+        shift_screen(scr_adr, 1);
+    }
+}
+
+float scr_Newline(float stream){
+    float ScrI = stream[STREAM_SCREEN_I];
+    float col = ScrI % SCR_WIDTH;
+    ScrI = ScrI - col + SCR_WIDTH;
+    stream[STREAM_SCREEN_I] = ScrI;
+    scr_check_shift(stream);
+}
+
+///------------
+/// later: try define fuckery so buff[stream_typeof] becomes __typeof
+///       oops, can't do that because in HLZASM, #define can only replace things with a single token.
+///       i.e. A -> B works but A -> B C does not.
+
+float shift_screen(float adr, float n){
+   adr[CS_SHIFT_ROW] = n;
+}
+
+float putch_screen(float c, float stream){
+    if(C == '\n'){
+        scr_Newline(stream);
+    }else if(C == KEY_BACKSPACE){
+        scr_Backspace(stream);
+    }else if(C == '\r'){
+        scr_CarriageReturn(stream);
+    }else{
+        put_char_stream(stream, C);
+        stream[STREAM_SCREEN_I]++;
+        scr_check_shift(stream);
+    }
+    return C;
+}
+
+float make_screen_stream_out(float buff, float adr_screen){
+    buff[STREAM_TYPEOF] = typeof_stream;
+    buff[STREAM_PUTCH] = putch_screen;
+    buff[STREAM_SCREEN_ADR] = adr_screen;
+    buff[STREAM_SCREEN_I] = 0;
+}
+
+
+#endif

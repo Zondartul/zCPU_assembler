@@ -1,0 +1,717 @@
+db __PROGRAMSIZE__;
+db "mov ECX,0\n"; // 0
+// main(...)
+db "call 2055\n"; // 6
+db "jmp EAX\n"; // 12
+db "str_1:\n";
+db "db \"Hello World!\",0\n"; // 18
+db "AdrScr:\n";
+db "db 65536\n"; // 31
+db "ScrI:\n";
+db "db 0\n"; // 32
+db "AdrDisk:\n";
+db "db 69536\n"; // 33
+db "AdrKb:\n";
+db "db 73536\n"; // 34
+db "BuffI:\n";
+db "db 0\n"; // 35
+db "WriteC:\n";
+// WriteC(C)
+db "enter -0\n"; // 36
+db "__1:\n";
+db "__3:\n";
+db "mov EAX,4000\n"; // 42
+db "sub EAX,#35\n"; // 48
+db "fsgn EAX,EAX\n"; // 54
+db "max EAX,0\n"; // 60
+// if (BuffI<4000)
+db "cmp 0,EAX\n"; // 66
+db "jge 126\n"; // 72
+db "rstack EAX,EBP:2\n"; // 78
+db "mov EBX,#35\n"; // 84
+db "add EBX,2769\n"; // 90
+// Buff[BuffI]=C
+db "mov #EBX,EAX\n"; // 96
+// BuffI++
+db "inc #35\n"; // 102
+db "mov EAX,#35\n"; // 108
+db "add EAX,2769\n"; // 114
+// Buff[BuffI]=0
+db "mov #EAX,0\n"; // 120
+db "__4:\n";
+db "__2:\n";
+db "__0:\n";
+db "leave \n"; // 126
+db "ret \n"; // 132
+db "EraseC:\n";
+// EraseC()
+db "enter -0\n"; // 138
+db "__6:\n";
+// BuffI--
+db "dec #35\n"; // 144
+db "mov EAX,#35\n"; // 150
+db "add EAX,2769\n"; // 156
+// Buff[BuffI]=0
+db "mov #EAX,0\n"; // 162
+db "__5:\n";
+db "leave \n"; // 168
+db "ret \n"; // 174
+db "hasKb:\n";
+// hasKb()
+db "enter -0\n"; // 180
+db "__8:\n";
+db "__10:\n";
+db "mov EAX,0\n"; // 186
+db "add EAX,#34\n"; // 192
+db "mov EBX,0\n"; // 198
+db "sub EBX,#EAX\n"; // 204
+db "fabs EBX,EBX\n"; // 210
+db "fsgn EBX,EBX\n"; // 216
+// if (AdrKb[0]!=0)
+db "cmp 0,EBX\n"; // 222
+db "jge 258\n"; // 228
+db "mov EAX,1\n"; // 234
+db "leave \n"; // 240
+db "ret \n"; // 246
+db "jmp 276\n"; // 252
+db "__12:\n";
+db "__11:\n";
+db "__14:\n";
+db "mov EAX,0\n"; // 258
+db "leave \n"; // 264
+db "ret \n"; // 270
+db "__13:\n";
+db "__9:\n";
+db "__7:\n";
+db "leave \n"; // 276
+db "ret \n"; // 282
+db "getKb:\n";
+// getKb()
+db "enter 1\n"; // 288
+db "__16:\n";
+db "mov EAX,1\n"; // 294
+db "add EAX,#34\n"; // 300
+db "sstack EBP:-1,#EAX\n"; // 306
+db "mov EAX,0\n"; // 312
+db "add EAX,#34\n"; // 318
+// AdrKb[0]=1
+db "mov #EAX,1\n"; // 324
+db "rstack EAX,EBP:-1\n"; // 330
+db "leave \n"; // 336
+db "ret \n"; // 342
+db "__15:\n";
+db "leave \n"; // 348
+db "ret \n"; // 354
+db "PrintC:\n";
+// PrintC(C)
+db "enter -0\n"; // 360
+db "__18:\n";
+db "rstack EAX,EBP:2\n"; // 366
+db "mov EBX,2\n"; // 372
+db "mul EBX,#32\n"; // 378
+db "add EBX,#31\n"; // 384
+// AdrScr[2*ScrI]=C
+db "mov #EBX,EAX\n"; // 390
+db "mov EAX,2\n"; // 396
+db "mul EAX,#32\n"; // 402
+db "add EAX,1\n"; // 408
+db "add EAX,#31\n"; // 414
+// AdrScr[2*ScrI+1]=999
+db "mov #EAX,999\n"; // 420
+// ScrI++
+db "inc #32\n"; // 426
+db "__17:\n";
+db "leave \n"; // 432
+db "ret \n"; // 438
+db "PrintS:\n";
+// PrintS(S)
+db "enter 1\n"; // 444
+db "__20:\n";
+db "sstack EBP:-1,0\n"; // 450
+db "__22:\n";
+db "rstack EAX,EBP:-1\n"; // 456
+db "rstack EBX,EBP:2\n"; // 462
+db "add EBX,EAX\n"; // 468
+db "mov EAX,EBX\n"; // 474
+db "mov EBX,0\n"; // 480
+db "sub EBX,#EAX\n"; // 486
+db "fabs EBX,EBX\n"; // 492
+db "fsgn EBX,EBX\n"; // 498
+// if (S[I]!=0
+db "cmp 0,EBX\n"; // 504
+db "jz 588\n"; // 510
+db "rstack EAX,EBP:-1\n"; // 516
+db "rstack EBX,EBP:2\n"; // 522
+db "add EBX,EAX\n"; // 528
+db "mov EAX,EBX\n"; // 534
+// PrintC arg #1 (float C)
+db "push #EAX\n"; // 540
+db "mov ECX,1\n"; // 546
+// PrintC(...)
+db "call 360\n"; // 552
+db "add ESP,1\n"; // 558
+db "rstack EAX,EBP:-1\n"; // 564
+// I++
+db "inc EAX\n"; // 570
+db "sstack EBP:-1,EAX\n"; // 576
+db "jmp 456\n"; // 582
+db "__21:\n";
+db "__19:\n";
+db "leave \n"; // 588
+db "ret \n"; // 594
+db "Backspace:\n";
+// Backspace()
+db "enter -0\n"; // 600
+db "__24:\n";
+// ScrI--
+db "dec #32\n"; // 606
+// PrintC arg #1 (float C)
+db "push 32\n"; // 612
+db "mov ECX,1\n"; // 618
+// PrintC(...)
+db "call 360\n"; // 624
+db "add ESP,1\n"; // 630
+// ScrI--
+db "dec #32\n"; // 636
+db "__23:\n";
+db "leave \n"; // 642
+db "ret \n"; // 648
+db "Newline:\n";
+// Newline()
+db "enter 1\n"; // 654
+db "__26:\n";
+db "mov EAX,#32\n"; // 660
+db "mod EAX,30\n"; // 666
+db "sstack EBP:-1,EAX\n"; // 672
+db "rstack EAX,EBP:-1\n"; // 678
+db "neg EAX\n"; // 684
+db "mov EBX,EAX\n"; // 690
+db "add EBX,30\n"; // 696
+db "mov EAX,#32\n"; // 702
+db "add EAX,EBX\n"; // 708
+// ScrI=ScrI-col+30
+db "mov #32,EAX\n"; // 714
+db "__25:\n";
+db "leave \n"; // 720
+db "ret \n"; // 726
+db "Print:\n";
+// Print(S)
+db "enter 2\n"; // 732
+db "__28:\n";
+db "sstack EBP:-1,0\n"; // 738
+db "__30:\n";
+db "rstack EAX,EBP:-1\n"; // 744
+db "rstack EBX,EBP:2\n"; // 750
+db "add EBX,EAX\n"; // 756
+db "mov EAX,EBX\n"; // 762
+db "mov EBX,0\n"; // 768
+db "sub EBX,#EAX\n"; // 774
+db "fabs EBX,EBX\n"; // 780
+db "fsgn EBX,EBX\n"; // 786
+// if (S[I]!=0
+db "cmp 0,EBX\n"; // 792
+db "jz 954\n"; // 798
+db "rstack EAX,EBP:-1\n"; // 804
+db "rstack EBX,EBP:2\n"; // 810
+db "add EBX,EAX\n"; // 816
+db "mov EAX,EBX\n"; // 822
+db "sstack EBP:-2,#EAX\n"; // 828
+db "__32:\n";
+db "rstack EAX,EBP:-2\n"; // 834
+db "mov EBX,10\n"; // 840
+db "sub EBX,EAX\n"; // 846
+db "fabs EBX,EBX\n"; // 852
+db "fsgn EBX,EBX\n"; // 858
+db "lneg EBX\n"; // 864
+// if (C=='\10')
+db "cmp 0,EBX\n"; // 870
+db "jge 900\n"; // 876
+db "mov ECX,0\n"; // 882
+// Newline(...)
+db "call 654\n"; // 888
+db "jmp 930\n"; // 894
+db "__34:\n";
+db "__33:\n";
+db "__36:\n";
+db "rstack EAX,EBP:-2\n"; // 900
+// PrintC arg #1 (float C)
+db "push EAX\n"; // 906
+db "mov ECX,1\n"; // 912
+// PrintC(...)
+db "call 360\n"; // 918
+db "add ESP,1\n"; // 924
+db "__35:\n";
+db "__31:\n";
+db "rstack EAX,EBP:-1\n"; // 930
+// I++
+db "inc EAX\n"; // 936
+db "sstack EBP:-1,EAX\n"; // 942
+db "jmp 744\n"; // 948
+db "__29:\n";
+db "__27:\n";
+db "leave \n"; // 954
+db "ret \n"; // 960
+db "Help:\n";
+// Help()
+db "enter -0\n"; // 966
+db "__38:\n";
+db "mov ECX,0\n"; // 972
+// Newline(...)
+db "call 654\n"; // 978
+// PrintS arg #1 (float S)
+db "push 1032\n"; // 984
+db "mov ECX,1\n"; // 990
+// PrintS(...)
+db "call 444\n"; // 996
+db "add ESP,1\n"; // 1002
+db "mov ECX,0\n"; // 1008
+// Newline(...)
+db "call 654\n"; // 1014
+db "__37:\n";
+db "leave \n"; // 1020
+db "ret \n"; // 1026
+db "__39:\n";
+db "db \"F1 - help, F2 - save, F3 - load, F4 - run, F5 - clear\",0\n"; // 1032
+db "Save:\n";
+// Save()
+db "enter 1\n"; // 1086
+db "__41:\n";
+db "mov ECX,0\n"; // 1092
+// Newline(...)
+db "call 654\n"; // 1098
+// PrintS arg #1 (float S)
+db "push 1350\n"; // 1104
+db "mov ECX,1\n"; // 1110
+// PrintS(...)
+db "call 444\n"; // 1116
+db "add ESP,1\n"; // 1122
+db "mov EAX,0\n"; // 1128
+db "add EAX,#33\n"; // 1134
+// AdrDisk[0]=BuffI
+db "mov #EAX,#35\n"; // 1140
+db "sstack EBP:-1,0\n"; // 1146
+db "__44:\n";
+db "rstack EAX,EBP:-1\n"; // 1152
+db "mov EBX,#35\n"; // 1158
+db "sub EBX,EAX\n"; // 1164
+db "fsgn EBX,EBX\n"; // 1170
+db "inc EBX\n"; // 1176
+db "max EBX,0\n"; // 1182
+// if (I<=BuffI
+db "cmp 0,EBX\n"; // 1188
+db "jz 1272\n"; // 1194
+db "rstack EAX,EBP:-1\n"; // 1200
+db "add EAX,2769\n"; // 1206
+db "mov EBX,EAX\n"; // 1212
+db "rstack EAX,EBP:-1\n"; // 1218
+db "add EAX,1\n"; // 1224
+db "mov ECX,EAX\n"; // 1230
+db "add ECX,#33\n"; // 1236
+// AdrDisk[I+1]=Buff[I]
+db "mov #ECX,#EBX\n"; // 1242
+db "rstack EAX,EBP:-1\n"; // 1248
+// I++
+db "inc EAX\n"; // 1254
+db "sstack EBP:-1,EAX\n"; // 1260
+db "jmp 1152\n"; // 1266
+db "__43:\n";
+db "rstack EAX,EBP:-1\n"; // 1272
+db "add EAX,#33\n"; // 1278
+db "mov EBX,EAX\n"; // 1284
+// AdrDisk[I]=0
+db "mov #EBX,0\n"; // 1290
+// PrintS arg #1 (float S)
+db "push 1344\n"; // 1296
+db "mov ECX,1\n"; // 1302
+// PrintS(...)
+db "call 444\n"; // 1308
+db "add ESP,1\n"; // 1314
+db "mov ECX,0\n"; // 1320
+// Newline(...)
+db "call 654\n"; // 1326
+db "__40:\n";
+db "leave \n"; // 1332
+db "ret \n"; // 1338
+db "__45:\n";
+db "db \"done.\",0\n"; // 1344
+db "__42:\n";
+db "db \"Save...\",0\n"; // 1350
+db "Load:\n";
+// Load()
+db "enter 1\n"; // 1358
+db "__47:\n";
+db "mov ECX,0\n"; // 1364
+// Newline(...)
+db "call 654\n"; // 1370
+// PrintS arg #1 (float S)
+db "push 1616\n"; // 1376
+db "mov ECX,1\n"; // 1382
+// PrintS(...)
+db "call 444\n"; // 1388
+db "add ESP,1\n"; // 1394
+db "mov EAX,0\n"; // 1400
+db "add EAX,#33\n"; // 1406
+// BuffI=AdrDisk[0]
+db "mov #35,#EAX\n"; // 1412
+db "sstack EBP:-1,0\n"; // 1418
+db "__50:\n";
+db "rstack EAX,EBP:-1\n"; // 1424
+db "mov EBX,#35\n"; // 1430
+db "sub EBX,EAX\n"; // 1436
+db "fsgn EBX,EBX\n"; // 1442
+db "inc EBX\n"; // 1448
+db "max EBX,0\n"; // 1454
+// if (I<=BuffI
+db "cmp 0,EBX\n"; // 1460
+db "jz 1544\n"; // 1466
+db "rstack EAX,EBP:-1\n"; // 1472
+db "add EAX,1\n"; // 1478
+db "mov EBX,EAX\n"; // 1484
+db "add EBX,#33\n"; // 1490
+db "rstack EAX,EBP:-1\n"; // 1496
+db "add EAX,2769\n"; // 1502
+db "mov ECX,EAX\n"; // 1508
+// Buff[I]=AdrDisk[I+1]
+db "mov #ECX,#EBX\n"; // 1514
+db "rstack EAX,EBP:-1\n"; // 1520
+// I++
+db "inc EAX\n"; // 1526
+db "sstack EBP:-1,EAX\n"; // 1532
+db "jmp 1424\n"; // 1538
+db "__49:\n";
+// PrintS arg #1 (float S)
+db "push 1344\n"; // 1544
+db "mov ECX,1\n"; // 1550
+// PrintS(...)
+db "call 444\n"; // 1556
+db "add ESP,1\n"; // 1562
+db "mov ECX,0\n"; // 1568
+// Newline(...)
+db "call 654\n"; // 1574
+// Print arg #1 (float S)
+db "push 2769\n"; // 1580
+db "mov ECX,1\n"; // 1586
+// Print(...)
+db "call 732\n"; // 1592
+db "add ESP,1\n"; // 1598
+db "__46:\n";
+db "leave \n"; // 1604
+db "ret \n"; // 1610
+db "__48:\n";
+db "db \"Load...\",0\n"; // 1616
+db "Run:\n";
+// Run()
+db "enter -0\n"; // 1624
+db "__52:\n";
+db "mov ECX,0\n"; // 1630
+// Newline(...)
+db "call 654\n"; // 1636
+// PrintS arg #1 (float S)
+db "push 1690\n"; // 1642
+db "mov ECX,1\n"; // 1648
+// PrintS(...)
+db "call 444\n"; // 1654
+db "add ESP,1\n"; // 1660
+db "mov ECX,0\n"; // 1666
+// Newline(...)
+db "call 654\n"; // 1672
+db "__51:\n";
+db "leave \n"; // 1678
+db "ret \n"; // 1684
+db "__53:\n";
+db "db \"Run\",0\n"; // 1690
+db "Clear:\n";
+// Clear()
+db "enter 2\n"; // 1694
+db "__55:\n";
+// BuffI=0
+db "mov #35,0\n"; // 1700
+// ScrI=0
+db "mov #32,0\n"; // 1706
+db "sstack EBP:-1,0\n"; // 1712
+// init loop
+db "sstack EBP:-1,0\n"; // 1718
+db "__57:\n";
+db "rstack EAX,EBP:-1\n"; // 1724
+db "mov EBX,18\n"; // 1730
+db "sub EBX,EAX\n"; // 1736
+db "fsgn EBX,EBX\n"; // 1742
+// condition
+db "max EBX,0\n"; // 1748
+db "cmp 0,EBX\n"; // 1754
+db "jz 1826\n"; // 1760
+// PrintC arg #1 (float C)
+db "push 46\n"; // 1766
+db "mov ECX,1\n"; // 1772
+// PrintC(...)
+db "call 360\n"; // 1778
+db "add ESP,1\n"; // 1784
+db "mov ECX,0\n"; // 1790
+// Newline(...)
+db "call 654\n"; // 1796
+db "rstack EAX,EBP:-1\n"; // 1802
+// loop step
+db "inc EAX\n"; // 1808
+db "sstack EBP:-1,EAX\n"; // 1814
+db "jmp 1724\n"; // 1820
+db "__56:\n";
+// ScrI=0
+db "mov #32,0\n"; // 1826
+// init loop
+db "sstack EBP:-1,0\n"; // 1832
+db "__59:\n";
+db "rstack EAX,EBP:-1\n"; // 1838
+db "mov EBX,18\n"; // 1844
+db "sub EBX,EAX\n"; // 1850
+db "fsgn EBX,EBX\n"; // 1856
+// condition
+db "max EBX,0\n"; // 1862
+db "cmp 0,EBX\n"; // 1868
+db "jz 2006\n"; // 1874
+db "sstack EBP:-2,0\n"; // 1880
+// init loop
+db "sstack EBP:-2,0\n"; // 1886
+db "__61:\n";
+db "rstack EAX,EBP:-2\n"; // 1892
+db "mov EBX,30\n"; // 1898
+db "sub EBX,EAX\n"; // 1904
+db "fsgn EBX,EBX\n"; // 1910
+// condition
+db "max EBX,0\n"; // 1916
+db "cmp 0,EBX\n"; // 1922
+db "jz 1982\n"; // 1928
+// PrintC arg #1 (float C)
+db "push 32\n"; // 1934
+db "mov ECX,1\n"; // 1940
+// PrintC(...)
+db "call 360\n"; // 1946
+db "add ESP,1\n"; // 1952
+db "rstack EAX,EBP:-2\n"; // 1958
+// loop step
+db "inc EAX\n"; // 1964
+db "sstack EBP:-2,EAX\n"; // 1970
+db "jmp 1892\n"; // 1976
+db "__60:\n";
+db "rstack EAX,EBP:-1\n"; // 1982
+// loop step
+db "inc EAX\n"; // 1988
+db "sstack EBP:-1,EAX\n"; // 1994
+db "jmp 1838\n"; // 2000
+db "__58:\n";
+// ScrI=0
+db "mov #32,0\n"; // 2006
+// PrintS arg #1 (float S)
+db "push 2048\n"; // 2012
+db "mov ECX,1\n"; // 2018
+// PrintS(...)
+db "call 444\n"; // 2024
+db "add ESP,1\n"; // 2030
+db "__54:\n";
+db "leave \n"; // 2036
+db "ret \n"; // 2042
+db "__62:\n";
+db "db \"Clear.\",0\n"; // 2048
+db "main:\n";
+// main()
+db "enter 1\n"; // 2055
+db "__64:\n";
+// PrintS arg #1 (float S)
+db "push 18\n"; // 2061
+db "mov ECX,1\n"; // 2067
+// PrintS(...)
+db "call 444\n"; // 2073
+db "add ESP,1\n"; // 2079
+db "__66:\n";
+// if (1
+db "cmp 0,1\n"; // 2085
+db "jz 2733\n"; // 2091
+db "__68:\n";
+db "mov ECX,0\n"; // 2097
+// hasKb(...)
+db "call 180\n"; // 2103
+db "mov EBX,1\n"; // 2109
+db "sub EBX,EAX\n"; // 2115
+db "fabs EBX,EBX\n"; // 2121
+db "fsgn EBX,EBX\n"; // 2127
+db "lneg EBX\n"; // 2133
+// if (hasKb()==1)
+db "cmp 0,EBX\n"; // 2139
+db "jge 2727\n"; // 2145
+db "mov ECX,0\n"; // 2151
+// getKb(...)
+db "call 288\n"; // 2157
+db "sstack EBP:-1,EAX\n"; // 2163
+db "__71:\n";
+db "rstack EAX,EBP:-1\n"; // 2169
+db "mov EBX,127\n"; // 2175
+db "sub EBX,EAX\n"; // 2181
+db "fabs EBX,EBX\n"; // 2187
+db "fsgn EBX,EBX\n"; // 2193
+db "lneg EBX\n"; // 2199
+// if (K==127)
+db "cmp 0,EBX\n"; // 2205
+db "jge 2247\n"; // 2211
+db "mov ECX,0\n"; // 2217
+// EraseC(...)
+db "call 138\n"; // 2223
+db "mov ECX,0\n"; // 2229
+// Backspace(...)
+db "call 600\n"; // 2235
+db "jmp 2727\n"; // 2241
+db "__73:\n";
+db "__72:\n";
+db "__75:\n";
+db "__77:\n";
+db "rstack EAX,EBP:-1\n"; // 2247
+db "mov EBX,10\n"; // 2253
+db "sub EBX,EAX\n"; // 2259
+db "fabs EBX,EBX\n"; // 2265
+db "fsgn EBX,EBX\n"; // 2271
+db "lneg EBX\n"; // 2277
+// if (K==10)
+db "cmp 0,EBX\n"; // 2283
+db "jge 2337\n"; // 2289
+// WriteC arg #1 (float C)
+db "push 10\n"; // 2295
+db "mov ECX,1\n"; // 2301
+// WriteC(...)
+db "call 36\n"; // 2307
+db "add ESP,1\n"; // 2313
+db "mov ECX,0\n"; // 2319
+// Newline(...)
+db "call 654\n"; // 2325
+db "jmp 2727\n"; // 2331
+db "__79:\n";
+db "__78:\n";
+db "__81:\n";
+db "__83:\n";
+db "rstack EAX,EBP:-1\n"; // 2337
+db "mov EBX,163\n"; // 2343
+db "sub EBX,EAX\n"; // 2349
+db "fabs EBX,EBX\n"; // 2355
+db "fsgn EBX,EBX\n"; // 2361
+db "lneg EBX\n"; // 2367
+// if (K==163)
+db "cmp 0,EBX\n"; // 2373
+db "jge 2403\n"; // 2379
+db "mov ECX,0\n"; // 2385
+// Help(...)
+db "call 966\n"; // 2391
+db "jmp 2727\n"; // 2397
+db "__85:\n";
+db "__84:\n";
+db "__87:\n";
+db "__89:\n";
+db "rstack EAX,EBP:-1\n"; // 2403
+db "mov EBX,164\n"; // 2409
+db "sub EBX,EAX\n"; // 2415
+db "fabs EBX,EBX\n"; // 2421
+db "fsgn EBX,EBX\n"; // 2427
+db "lneg EBX\n"; // 2433
+// if (K==164)
+db "cmp 0,EBX\n"; // 2439
+db "jge 2469\n"; // 2445
+db "mov ECX,0\n"; // 2451
+// Save(...)
+db "call 1086\n"; // 2457
+db "jmp 2727\n"; // 2463
+db "__91:\n";
+db "__90:\n";
+db "__93:\n";
+db "__95:\n";
+db "rstack EAX,EBP:-1\n"; // 2469
+db "mov EBX,165\n"; // 2475
+db "sub EBX,EAX\n"; // 2481
+db "fabs EBX,EBX\n"; // 2487
+db "fsgn EBX,EBX\n"; // 2493
+db "lneg EBX\n"; // 2499
+// if (K==165)
+db "cmp 0,EBX\n"; // 2505
+db "jge 2535\n"; // 2511
+db "mov ECX,0\n"; // 2517
+// Load(...)
+db "call 1358\n"; // 2523
+db "jmp 2727\n"; // 2529
+db "__97:\n";
+db "__96:\n";
+db "__99:\n";
+db "__101:\n";
+db "rstack EAX,EBP:-1\n"; // 2535
+db "mov EBX,166\n"; // 2541
+db "sub EBX,EAX\n"; // 2547
+db "fabs EBX,EBX\n"; // 2553
+db "fsgn EBX,EBX\n"; // 2559
+db "lneg EBX\n"; // 2565
+// if (K==166)
+db "cmp 0,EBX\n"; // 2571
+db "jge 2601\n"; // 2577
+db "mov ECX,0\n"; // 2583
+// Run(...)
+db "call 1624\n"; // 2589
+db "jmp 2727\n"; // 2595
+db "__103:\n";
+db "__102:\n";
+db "__105:\n";
+db "__107:\n";
+db "rstack EAX,EBP:-1\n"; // 2601
+db "mov EBX,167\n"; // 2607
+db "sub EBX,EAX\n"; // 2613
+db "fabs EBX,EBX\n"; // 2619
+db "fsgn EBX,EBX\n"; // 2625
+db "lneg EBX\n"; // 2631
+// if (K==167)
+db "cmp 0,EBX\n"; // 2637
+db "jge 2667\n"; // 2643
+db "mov ECX,0\n"; // 2649
+// Clear(...)
+db "call 1694\n"; // 2655
+db "jmp 2727\n"; // 2661
+db "__109:\n";
+db "__108:\n";
+db "__111:\n";
+db "rstack EAX,EBP:-1\n"; // 2667
+// WriteC arg #1 (float C)
+db "push EAX\n"; // 2673
+db "mov ECX,1\n"; // 2679
+// WriteC(...)
+db "call 36\n"; // 2685
+db "add ESP,1\n"; // 2691
+db "rstack EAX,EBP:-1\n"; // 2697
+// PrintC arg #1 (float C)
+db "push EAX\n"; // 2703
+db "mov ECX,1\n"; // 2709
+// PrintC(...)
+db "call 360\n"; // 2715
+db "add ESP,1\n"; // 2721
+db "__110:\n";
+db "__106:\n";
+db "__104:\n";
+db "__100:\n";
+db "__98:\n";
+db "__94:\n";
+db "__92:\n";
+db "__88:\n";
+db "__86:\n";
+db "__82:\n";
+db "__80:\n";
+db "__76:\n";
+db "__74:\n";
+db "__70:\n";
+db "__69:\n";
+db "__67:\n";
+db "jmp 2085\n"; // 2727
+db "__65:\n";
+db "__113:\n";
+// if (1
+db "cmp 0,1\n"; // 2733
+db "jz 2757\n"; // 2739
+db "nop \n"; // 2745
+db "jmp 2733\n"; // 2751
+db "__112:\n";
+db "__63:\n";
+db "leave \n"; // 2757
+db "ret \n"; // 2763
+db "Buff:\n";
+db "alloc 4000\n"; // 2769
+db "db 0\n"; // 6769
+db 0;

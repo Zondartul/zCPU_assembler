@@ -1,0 +1,83 @@
+#ifndef STREAM_SCREEN_GUARD
+#define STREAM_SCREEN_GUARD
+/// stream_screen
+#include "simple_stream.txt"
+/// ---- screen stream ----
+
+#define SCR_WIDTH 30
+#define SCR_HEIGHT 18
+#define KEY_ENTER 10
+#define KEY_BACKSPACE 127
+
+/// stream:
+#define STREAM_SCREEN_ADR 6
+#define STREAM_SCREEN_I 7
+
+#define __ADR stream[STREAM_SCREEN_ADR]
+#define __I stream[STREAM_SCREEN_I]
+
+///-------------- stuff to nom -------------
+
+float put_char_I(float adr, float scrI, float C){
+    adr[2*scrI] = C;
+    adr[2*scrI+1] = 999;
+}
+
+float put_char_stream(float stream, float C){
+    float adr = stream[STREAM_SCREEN_ADR];
+    float I = stream[STREAM_SCREEN_I];
+    put_char_I(adr, I, C);
+}
+
+float scr_Backspace(float stream){
+    stream[STREAM_SCREEN_I]--;
+    put_char_stream(stream, ' ');
+    // another I-- here?
+}
+
+
+float scr_Newline(float stream){
+    float ScrI = stream[STREAM_SCREEN_I];
+    float col = ScrI % SCR_WIDTH;
+    ScrI = ScrI - col + SCR_WIDTH;
+    stream[STREAM_SCREEN_I] = ScrI;
+}
+
+///------------
+/// later: try define fuckery so buff[stream_typeof] becomes __typeof
+
+
+float putch_screen(float c, float stream){
+    if(C == '\n'){
+        scr_Newline(stream);
+    }else if(C == KEY_BACKSPACE){
+        scr_Backspace(stream);
+    }else{
+        put_char_stream(stream, C);
+        stream[STREAM_SCREEN_I]++;
+        if(stream[STREAM_SCREEN_I] > (SCR_WIDTH * SCR_HEIGHT)){
+            stream[STREAM_SCREEN_I] = 0;
+        }
+    }
+    return C;
+}
+//float getch_screen(float stream){return 0;}
+//float hasch_screen(float stream){return 0;}
+float seek_screen(float n, float stream){
+    stream[STREAM_SCREEN_I] = n;
+}
+
+float make_screen_stream(float buff, float adr_screen){
+    buff[STREAM_TYPEOF] = typeof_stream;
+    buff[STREAM_PUTCH] = putch_screen;
+    buff[STREAM_GETCH] = getch_screen;
+    buff[STREAM_HASCH] = hasch_screen;
+    buff[STREAM_SEEK] = seek_screen;
+    buff[STREAM_SCREEN_ADR] = adr_screen;
+    buff[STREAM_SCREEN_I] = 0;
+}
+
+#undef __ADR
+#undef __I
+
+#endif
